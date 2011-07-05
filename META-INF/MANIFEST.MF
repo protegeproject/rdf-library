@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: OWL-RDF bridge
+Bundle-SymbolicName: org.protege.owl.rdf;singleton:=true
+Bundle-Version: 1.0.0
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Vendor: The Protege Development Team
+Import-Package: org.semanticweb.owlapi.apibinding,
+ org.semanticweb.owlapi.model
