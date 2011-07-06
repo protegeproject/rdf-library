@@ -6,10 +6,15 @@ import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.model.OWLAxiom;
 
 public class OwlTripleStoreImpl implements OwlTripleStore {
+	private Repository repository;
+	
+	public OwlTripleStoreImpl(Repository repository) {
+		this.repository = repository;
+	}
 
 	@Override
 	public Repository getRepository() {
-		throw new UnsupportedOperationException("Not implemented yet");
+		return repository;
 	}
 
 	@Override
