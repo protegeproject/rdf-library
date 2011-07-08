@@ -1,5 +1,8 @@
 package org.protege.owl.rdf.impl;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,6 +17,9 @@ import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
+import org.openrdf.rio.RDFHandlerException;
+import org.openrdf.rio.RDFWriter;
+import org.openrdf.rio.rdfxml.RDFXMLWriter;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -118,18 +124,15 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 			}
 			return null;
 		}
-		catch (OWLOntologyCreationException ooce) {
+		catch (Exception ooce) {
 			throw new RepositoryException(ooce);
-		}
-		catch (SAXException se) {
-			throw new RepositoryException(se);
 		}
 		finally {
 			connection.close();
 		}
 	}
 	
-	private OWLAxiom parseAxiom(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException {
+	private OWLAxiom parseAxiom(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException, IOException, RDFHandlerException {
 		LOGGER.info("Starting parse");
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = manager.createOntology();
@@ -139,16 +142,21 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
             }
 
             public boolean isAnonymousSharedNode(String iri) {
-                return anonymousNodes.contains(IRI.create(iri));  // what the heck?!??
+                return false;
             }
 
             public boolean isAnonymousNode(String iri) {
-                return anonymousNodes.contains(IRI.create(iri));
+                throw new UnsupportedOperationException("not used?");
             }
         }, new OWLOntologyLoaderConfiguration());
 		RepositoryResult<Statement> triples = connection.getStatements(null, null, null, false, axiomId);
+		File tmp = File.createTempFile("owl2triples", ".owl");
+		LOGGER.info("Writing to " + tmp);
+		RDFWriter writer = new RDFXMLWriter(new FileWriter(tmp));
+		writer.startRDF();
 		while (triples.hasNext()) {
 			Statement stmt = triples.next();
+			writer.handleStatement(stmt);
 			LOGGER.info(stmt);
 			String subjectName = null;
 			String objectName = null;
@@ -184,6 +192,8 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 				consumer.statementWithResourceValue(subjectName, stmt.getPredicate().stringValue(), objectName);
 			}
 		}
+		writer.endRDF();
+		consumer.endModel();
 		LOGGER.info("Parse complete - " + ontology.getAxioms());
 		if (ontology.getAxiomCount() == 0) {
 			return null;
