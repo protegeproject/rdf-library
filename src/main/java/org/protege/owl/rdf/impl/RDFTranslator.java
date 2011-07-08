@@ -1,7 +1,7 @@
 package org.protege.owl.rdf.impl;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.coode.owlapi.rdf.model.AbstractTranslator;
@@ -12,32 +12,74 @@ import org.openrdf.model.ValueFactory;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
-	private Repository repository;
 	private org.openrdf.model.URI axiomResource;
-	private Map<Object, BNode> bnodeMap = new HashMap<Object, BNode>();
+	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
+	
+	public static void translate(Repository repository, OWLAxiom axiom, org.openrdf.model.URI hashCodeProperty) throws RepositoryException {
+		boolean success = false;
+		
+		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+		
+		RDFTranslator translator = null;
+		
+		try {
+			OWLOntology ontology = createOntology(manager, axiom);
+		    translator = new RDFTranslator(repository, manager, ontology);
+			ValueFactory rdfFactory = repository.getValueFactory();
+			RepositoryConnection connection = translator.getConnection();
+			axiom.accept(translator);
 
-	public RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) {
+			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
+			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
+		}
+		catch (RepositoryRuntimeException rre) {
+			throw rre.getCause();
+		} catch (OWLOntologyCreationException e) {
+			throw new RepositoryException(e);
+		}
+		finally {
+			if (translator != null) {
+				translator.close(success);
+			}
+		}
+	}
+	
+	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
+		OWLDataFactory owlFactory = manager.getOWLDataFactory();
+		OWLOntology ontology = manager.createOntology();
+		List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+		changes.add(new AddAxiom(ontology, axiom));
+		for (OWLEntity entity : axiom.getSignature()) {
+			changes.add(new AddAxiom(ontology, owlFactory.getOWLDeclarationAxiom(entity)));
+		}
+		manager.applyChanges(changes);
+		return ontology;
+	}
+
+	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
 		super(manager, ontology, true);
-		this.repository = repository;
-	}
-	
-	public org.openrdf.model.URI startTransaction() throws RepositoryException {
-		ValueFactory factory = repository.getValueFactory();
-		axiomResource = factory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
-		bnodeMap.clear();
+		rdfFactory = repository.getValueFactory();
+		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
-		return axiomResource;
 	}
+
 	
-	public void finishTransaction(boolean success) throws RepositoryException {
+	public void close(boolean success) throws RepositoryException {
 		if (success) {
 			connection.commit();
 		}
@@ -50,35 +92,36 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	public RepositoryConnection getConnection() {
 		return connection;
 	}
+	
+	public org.openrdf.model.URI getAxiomResource() {
+		return axiomResource;
+	}
 
 	@Override
 	protected org.openrdf.model.URI getResourceNode(IRI iri) {
-		ValueFactory factory = repository.getValueFactory();
-		return factory.createURI(iri.toString());
+		return rdfFactory.createURI(iri.toString());
 	}
 
 	@Override
 	protected org.openrdf.model.URI getPredicateNode(IRI iri) {
-		ValueFactory factory = repository.getValueFactory();
-		return factory.createURI(iri.toString());
+		return rdfFactory.createURI(iri.toString());
 	}
 
 	@Override
 	protected BNode getAnonymousNode(Object key) {
-		return repository.getValueFactory().createBNode();
+		return rdfFactory.createBNode();
 	}
 
 	@Override
 	protected org.openrdf.model.Literal getLiteralNode(OWLLiteral literal) {
-		ValueFactory factory = repository.getValueFactory();
 		if (literal.isRDFPlainLiteral() && literal.getLang() != null) {
-			return factory.createLiteral(literal.getLiteral(), literal.getLang());
+			return rdfFactory.createLiteral(literal.getLiteral(), literal.getLang());
 		}
 		else if (literal.isRDFPlainLiteral()) {
-			return factory.createLiteral(literal.getLiteral());
+			return rdfFactory.createLiteral(literal.getLiteral());
 		}
 		else {
-			return factory.createLiteral(literal.getLiteral(), factory.createURI(literal.getDatatype().getIRI().toString()));
+			return rdfFactory.createLiteral(literal.getLiteral(), rdfFactory.createURI(literal.getDatatype().getIRI().toString()));
 		}
 	}
 

@@ -12,7 +12,6 @@ import org.apache.log4j.Logger;
 import org.coode.owlapi.rdfxml.parser.AnonymousNodeChecker;
 import org.coode.owlapi.rdfxml.parser.OWLRDFConsumer;
 import org.openrdf.model.BNode;
-import org.openrdf.model.Resource;
 import org.openrdf.model.Statement;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.repository.Repository;
@@ -27,13 +26,11 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
-import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.vocab.OWL2Datatype;
-import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import org.xml.sax.SAXException;
 
 public class OwlTripleStoreImpl implements OwlTripleStore {
@@ -45,12 +42,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	private org.openrdf.model.URI hashCodeProperty;
 	
 	private Repository repository;
-	
-	private OWLOntology internalOntology;
-	private RDFTranslator translator;
-
-
-	
+		
 	private Set<IRI> anonymousNodes;
 	private AnonymousNodeChecker anonymousNodeChecker = new AnonymousNodeChecker() {
         public boolean isAnonymousNode(IRI iri) {
@@ -71,14 +63,6 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		this.repository = repository;
 		hashCodeProperty = repository.getValueFactory().createURI(HASH_CODE);
 		anonymousNodes = new HashSet<IRI>();
-		OWLOntologyManager internalManager = OWLManager.createOWLOntologyManager();
-		try {
-		    internalOntology = internalManager.createOntology();
-			translator = new RDFTranslator(repository, internalManager, internalOntology);
-		}
-		catch (OWLOntologyCreationException oce) {
-			throw new RuntimeException(oce); // come on guys this will never happen!
-		}
 	}
 
 	@Override
@@ -87,51 +71,17 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 
 	@Override
-	public Resource addAxiom(OWLAxiom axiom) throws RepositoryException {
-		org.openrdf.model.URI axiomResource = getAxiomId(axiom);
-		if (axiomResource != null) {
-			return axiomResource;
+	public void addAxiom(OWLAxiom axiom) throws RepositoryException {
+		if (getAxiomId(axiom) != null) {
+			return;
 		}
-		boolean success = false;
-		OWLOntologyManager internalManager = internalOntology.getOWLOntologyManager();
-		axiomResource = translator.startTransaction();
-		try {
-			internalManager.addAxiom(internalOntology, axiom);
-			
-			RepositoryConnection connection = translator.getConnection();
-			ValueFactory factory = repository.getValueFactory();
-			axiom.accept(translator);
-			for (OWLEntity entity : axiom.getSignature()) {
-				connection.add(factory.createURI(entity.getIRI().toString()), 
-						       factory.createURI(OWLRDFVocabulary.RDF_TYPE.getIRI().toString()), 
-						       factory.createURI(entity.getEntityType().getVocabulary().getIRI().toString()), 
-						       axiomResource);
-			}
-			org.openrdf.model.Literal hashCodeValue = factory.createLiteral(axiom.hashCode());
-			connection.add(axiomResource, hashCodeProperty, hashCodeValue);
-			success = true;
-		}
-		catch (RepositoryRuntimeException rre) {
-			throw rre.getCause();
-		}
-		finally {
-			translator.finishTransaction(success);
-			internalManager.removeAxiom(internalOntology, axiom);
-		}
-		return axiomResource;
+		RDFTranslator.translate(repository, axiom, hashCodeProperty);
 	}
 
 	@Override
 	public void removeAxiom(OWLAxiom axiom) throws RepositoryException {
 		org.openrdf.model.URI axiomResource = getAxiomId(axiom);
-		RepositoryConnection connection = repository.getConnection();
-		try {
-			RepositoryResult<Statement> stmts = connection.getStatements(null, null, null, false, axiomResource);
-			connection.remove(stmts, axiomResource);
-		}
-		finally {
-			connection.close();
-		}
+		removeAxiom(axiomResource);
 	}
 	
 	public boolean hasAxiom(OWLAxiom axiom) throws RepositoryException {
@@ -139,8 +89,51 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 	
 	@Override
-	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms() {
-		throw new UnsupportedOperationException("Not supported yet");
+	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms() throws RepositoryException {
+		RepositoryConnection connection = repository.getConnection();
+		try {
+			final RepositoryResult<Statement> stmts = connection.getStatements(null, hashCodeProperty, null, false);
+			return new CloseableIteration<OWLAxiom, RepositoryException>() {
+
+				@Override
+				public boolean hasNext() throws RepositoryException {
+					return stmts.hasNext();
+				}
+
+				@Override
+				public OWLAxiom next() throws RepositoryException {
+					Statement stmt = stmts.next();
+					org.openrdf.model.URI axiomResource = (org.openrdf.model.URI) stmt.getSubject();
+					RepositoryConnection connection = repository.getConnection();
+					try {
+						return parseAxiom(connection, axiomResource);
+					}
+					catch (RepositoryException re) {
+						throw re;
+					}
+					catch (Exception e) {
+						throw new RepositoryException(e);
+					}
+					finally {
+						connection.close();
+					}
+				}
+
+				@Override
+				public void remove() throws RepositoryException {
+					stmts.remove();
+				}
+
+				@Override
+				public void close() throws RepositoryException {
+					stmts.close();
+				}
+				
+			};
+		}
+		finally {
+			connection.close();
+		}
 	}
 	
 	@Override
@@ -257,6 +250,17 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 			name = ((org.openrdf.model.Resource) resource).stringValue();
 		}
 		return name;
+	}
+	
+	private void removeAxiom(org.openrdf.model.URI axiomResource) throws RepositoryException {
+		RepositoryConnection connection = repository.getConnection();
+		try {
+			RepositoryResult<Statement> stmts = connection.getStatements(null, null, null, false, axiomResource);
+			connection.remove(stmts, axiomResource);
+		}
+		finally {
+			connection.close();
+		}
 	}
 
 }
