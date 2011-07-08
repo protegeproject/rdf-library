@@ -23,6 +23,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
@@ -43,6 +44,12 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 			ValueFactory rdfFactory = repository.getValueFactory();
 			RepositoryConnection connection = translator.getConnection();
 			axiom.accept(translator);
+			for (OWLEntity entity : axiom.getSignature()) {  // why aren't these getting included?
+				connection.add(rdfFactory.createURI(entity.getIRI().toString()), 
+						       rdfFactory.createURI(OWLRDFVocabulary.RDF_TYPE.getIRI().toString()), 
+						       rdfFactory.createURI(entity.getEntityType().getVocabulary().getIRI().toString()), 
+						       translator.axiomResource);
+			}
 
 			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
 			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
@@ -60,19 +67,15 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 	
 	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
-		OWLDataFactory owlFactory = manager.getOWLDataFactory();
 		OWLOntology ontology = manager.createOntology();
 		List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
 		changes.add(new AddAxiom(ontology, axiom));
-		for (OWLEntity entity : axiom.getSignature()) {
-			changes.add(new AddAxiom(ontology, owlFactory.getOWLDeclarationAxiom(entity)));
-		}
 		manager.applyChanges(changes);
 		return ontology;
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, true);
+		super(manager, ontology, false);
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();

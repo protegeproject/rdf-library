@@ -91,9 +91,10 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	@Override
 	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms() throws RepositoryException {
 		RepositoryConnection connection = repository.getConnection();
+		boolean success = false;
 		try {
 			final RepositoryResult<Statement> stmts = connection.getStatements(null, hashCodeProperty, null, false);
-			return new CloseableIteration<OWLAxiom, RepositoryException>() {
+			CloseableIteration<OWLAxiom, RepositoryException> it = new CloseableIteration<OWLAxiom, RepositoryException>() {
 
 				@Override
 				public boolean hasNext() throws RepositoryException {
@@ -130,9 +131,13 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 				}
 				
 			};
+			success = true;
+			return it;
 		}
 		finally {
-			connection.close();
+			if (!success) {
+				connection.close();
+			}
 		}
 	}
 	
@@ -222,7 +227,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 			               String subjectName, String predicateName, org.openrdf.model.Literal literal) throws SAXException {
 		String datatype;
 		if (literal.getDatatype() == null) {
-			datatype = OWL2Datatype.RDF_PLAIN_LITERAL.getIRI().toString();
+			datatype = null; // OWL2Datatype.RDF_PLAIN_LITERAL.getIRI().toString();
 		}
 		else {
 			datatype = literal.getDatatype().stringValue();

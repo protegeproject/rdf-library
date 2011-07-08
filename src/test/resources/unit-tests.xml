@@ -1,0 +1,11 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+
+<suite name="OWL Triple Store Library Test Suite" verbose="1">
+
+    <test name="OWL Triple Store Library Tests">
+        <classes>
+            <class name="org.protege.owl.rdf.BasicTests"/>
+        </classes>
+    </test>
+
+</suite>
