@@ -1,10 +1,11 @@
 package org.protege.owl.rdf.api;
 
+import info.aduna.iteration.CloseableIteration;
+
 import org.openrdf.model.Resource;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryException;
 import org.semanticweb.owlapi.model.OWLAxiom;
-import org.semanticweb.owlapi.model.OWLOntology;
 
 public interface OwlTripleStore {
 
@@ -15,4 +16,10 @@ public interface OwlTripleStore {
 	void removeAxiom(OWLAxiom axiom) throws RepositoryException;
 	
 	boolean hasAxiom(OWLAxiom axiom) throws RepositoryException;
+	
+	CloseableIteration<OWLAxiom, RepositoryException> listAxioms();
+	
+	boolean integrityCheck();
+	
+	boolean incorporateExternalChanges();
 }

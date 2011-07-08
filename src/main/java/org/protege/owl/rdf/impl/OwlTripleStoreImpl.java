@@ -1,5 +1,7 @@
 package org.protege.owl.rdf.impl;
 
+import info.aduna.iteration.CloseableIteration;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -24,6 +26,7 @@ import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
@@ -38,14 +41,30 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	
 	public static final String NS = "http://protege.org/owl2triplestore.owl";
 	public static final String HASH_CODE = NS + "#hashCode";
-
+	
+	private org.openrdf.model.URI hashCodeProperty;
+	
 	private Repository repository;
 	
 	private OWLOntology internalOntology;
 	private RDFTranslator translator;
 
-	private org.openrdf.model.URI hashCodeProperty;
+
+	
 	private Set<IRI> anonymousNodes;
+	private AnonymousNodeChecker anonymousNodeChecker = new AnonymousNodeChecker() {
+        public boolean isAnonymousNode(IRI iri) {
+            return anonymousNodes.contains(iri);  // what the heck?!??
+        }
+
+        public boolean isAnonymousSharedNode(String iri) {
+            return false;
+        }
+
+        public boolean isAnonymousNode(String iri) {
+            throw new UnsupportedOperationException("not used?");
+        }
+    };
 	
 	
 	public OwlTripleStoreImpl(Repository repository) {
@@ -69,9 +88,13 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 
 	@Override
 	public Resource addAxiom(OWLAxiom axiom) throws RepositoryException {
+		org.openrdf.model.URI axiomResource = getAxiomId(axiom);
+		if (axiomResource != null) {
+			return axiomResource;
+		}
 		boolean success = false;
 		OWLOntologyManager internalManager = internalOntology.getOWLOntologyManager();
-		org.openrdf.model.URI axiomResource = translator.startTransaction();
+		axiomResource = translator.startTransaction();
 		try {
 			internalManager.addAxiom(internalOntology, axiom);
 			
@@ -99,12 +122,35 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 
 	@Override
-	public void removeAxiom(OWLAxiom axiom) {
-		throw new UnsupportedOperationException("Not implemented yet");
+	public void removeAxiom(OWLAxiom axiom) throws RepositoryException {
+		org.openrdf.model.URI axiomResource = getAxiomId(axiom);
+		RepositoryConnection connection = repository.getConnection();
+		try {
+			RepositoryResult<Statement> stmts = connection.getStatements(null, null, null, false, axiomResource);
+			connection.remove(stmts, axiomResource);
+		}
+		finally {
+			connection.close();
+		}
 	}
 	
 	public boolean hasAxiom(OWLAxiom axiom) throws RepositoryException {
 		return getAxiomId(axiom) != null;
+	}
+	
+	@Override
+	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms() {
+		throw new UnsupportedOperationException("Not supported yet");
+	}
+	
+	@Override
+	public boolean integrityCheck() {
+		throw new UnsupportedOperationException("Not supported yet");
+	}
+	
+	@Override
+	public boolean incorporateExternalChanges() {
+		throw new UnsupportedOperationException("Not supported yet");
 	}
 
 	private org.openrdf.model.URI getAxiomId(OWLAxiom axiom) throws RepositoryException {
@@ -133,72 +179,84 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 	
 	private OWLAxiom parseAxiom(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException, IOException, RDFHandlerException {
-		LOGGER.info("Starting parse");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Starting parse");
+        }
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = manager.createOntology();
-		org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer = new OWLRDFConsumer(ontology, new AnonymousNodeChecker() {
-            public boolean isAnonymousNode(IRI iri) {
-                return anonymousNodes.contains(iri);  // what the heck?!??
-            }
-
-            public boolean isAnonymousSharedNode(String iri) {
-                return false;
-            }
-
-            public boolean isAnonymousNode(String iri) {
-                throw new UnsupportedOperationException("not used?");
-            }
-        }, new OWLOntologyLoaderConfiguration());
+		org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
 		RepositoryResult<Statement> triples = connection.getStatements(null, null, null, false, axiomId);
-		File tmp = File.createTempFile("owl2triples", ".owl");
-		LOGGER.info("Writing to " + tmp);
-		RDFWriter writer = new RDFXMLWriter(new FileWriter(tmp));
-		writer.startRDF();
+		RDFWriter writer = null;
+        if (LOGGER.isDebugEnabled()) {
+            File tmp = File.createTempFile("owl2triples", ".owl");
+            writer = new RDFXMLWriter(new FileWriter(tmp));
+            LOGGER.debug("Writing to " + tmp);
+            writer.startRDF();
+        }
 		while (triples.hasNext()) {
 			Statement stmt = triples.next();
-			writer.handleStatement(stmt);
-			LOGGER.info(stmt);
-			String subjectName = null;
-			String objectName = null;
-			if (stmt.getSubject() instanceof BNode) {
-				subjectName = "_:" + ((BNode) stmt.getSubject()).getID();
-				anonymousNodes.add(IRI.create(subjectName));
-			}
-			else {
-				subjectName = ((org.openrdf.model.Resource) stmt.getSubject()).stringValue();
-			}
-			if (stmt.getObject() instanceof BNode) {
-				objectName = "_:" + ((BNode) stmt.getObject()).getID();
-				anonymousNodes.add(IRI.create(objectName));
-			}
-			else if (stmt.getObject() instanceof org.openrdf.model.URI){
-				objectName = ((org.openrdf.model.URI) stmt.getObject()).stringValue();
-			}
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(stmt);
+                writer.handleStatement(stmt);
+            }
+			String subjectName = generateName(stmt.getSubject());
+			String predicateName = generateName(stmt.getPredicate());
 			if (stmt.getObject() instanceof org.openrdf.model.Literal) {
-				org.openrdf.model.Literal literal = (org.openrdf.model.Literal) stmt.getObject();
-				String datatype;
-				if (literal.getDatatype() == null) {
-					datatype = OWL2Datatype.RDF_PLAIN_LITERAL.getIRI().toString();
-				}
-				else {
-					datatype = literal.getDatatype().stringValue();
-				}
-				consumer.statementWithLiteralValue(subjectName, 
-						                           stmt.getPredicate().stringValue(), 
-						                           literal.stringValue(), 
-						                           literal.getLanguage(), 
-						                           datatype);
+				addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Literal) stmt.getObject());
 			} else {
-				consumer.statementWithResourceValue(subjectName, stmt.getPredicate().stringValue(), objectName);
+				addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Resource) stmt.getObject());
 			}
 		}
-		writer.endRDF();
 		consumer.endModel();
-		LOGGER.info("Parse complete - " + ontology.getAxioms());
-		if (ontology.getAxiomCount() == 0) {
-			return null;
+        if (LOGGER.isDebugEnabled()) {
+            writer.endRDF();
+            LOGGER.debug("Parse complete - " + ontology.getAxioms());
+        }
+		if (ontology.getAxiomCount() == 1) {
+			return ontology.getAxioms().iterator().next();
 		}
-		return ontology.getAxioms().iterator().next();
+		else if (ontology.getAxiomCount() > 1) {
+			for (OWLAxiom axiom : ontology.getAxioms()) {
+				if (!(axiom instanceof OWLDeclarationAxiom)) {
+					return axiom;
+				}
+			}
+		}
+		return null;
+	}
+	
+	private void addTriple(org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer,
+			               String subjectName, String predicateName, org.openrdf.model.Literal literal) throws SAXException {
+		String datatype;
+		if (literal.getDatatype() == null) {
+			datatype = OWL2Datatype.RDF_PLAIN_LITERAL.getIRI().toString();
+		}
+		else {
+			datatype = literal.getDatatype().stringValue();
+		}
+		consumer.statementWithLiteralValue(subjectName, 
+				                           predicateName, 
+				                           literal.stringValue(), 
+				                           literal.getLanguage(), 
+				                           datatype);
+	}
+	
+	private void addTriple(org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer,
+                           String subjectName, String predicateName, org.openrdf.model.Resource value) throws SAXException {
+		String objectName = generateName(value);
+		consumer.statementWithResourceValue(subjectName, predicateName, objectName);
+	}
+	
+	private String generateName(org.openrdf.model.Resource resource) {
+		String name;
+		if (resource instanceof BNode) {
+			name = "_:" + ((BNode) resource).getID();
+			anonymousNodes.add(IRI.create(name));
+		}
+		else {
+			name = ((org.openrdf.model.Resource) resource).stringValue();
+		}
+		return name;
 	}
 
 }
