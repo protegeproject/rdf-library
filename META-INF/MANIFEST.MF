@@ -126,6 +126,7 @@ Import-Package: info.aduna.collections,
  org.coode.owlapi.rdfxml.parser,
  org.semanticweb.owlapi.apibinding,
  org.semanticweb.owlapi.model,
+ org.semanticweb.owlapi.util,
  org.semanticweb.owlapi.rdf.syntax,
  org.semanticweb.owlapi.vocab
 Export-Package: info.aduna.collections,
