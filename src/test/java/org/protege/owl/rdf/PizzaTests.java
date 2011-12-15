@@ -18,19 +18,26 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 
-public class BasicTests {
-	public static Logger LOGGER = Logger.getLogger(BasicTests.class);
+public class PizzaTests {
+	public static Logger LOGGER = Logger.getLogger(PizzaTests.class);
 	public static String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
+
+	public static final OWLClass PIZZA          = OWLManager.getOWLDataFactory().getOWLClass(IRI.create(NS + "#Pizza"));
+	public static final OWLClass CHEESEY_PIZZA  = OWLManager.getOWLDataFactory().getOWLClass(IRI.create(NS + "#CheeseyPizza"));
+	public static final OWLClass TOMATO_TOPPING = OWLManager.getOWLDataFactory().getOWLClass(IRI.create(NS + "#TomatoTopping"));
+	public static final OWLObjectProperty HAS_TOPPING = OWLManager.getOWLDataFactory().getOWLObjectProperty(IRI.create(NS + "#hasTopping"));
+	
 	
 	private OWLOntology ontology;
 	private OwlTripleStore ots;
@@ -42,14 +49,17 @@ public class BasicTests {
 	}
 
 	@Test
-	public void testRead() throws RepositoryException, OWLOntologyCreationException {
+	public void testHasAxiom() throws RepositoryException, OWLOntologyCreationException {
 		long startTime = System.currentTimeMillis();
 		for (OWLAxiom axiom : ontology.getAxioms()) {
-			Assert.assertTrue(ots.hasAxiom(axiom));
+			Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom));
 		}
 		LOGGER.info("Parsing all the axioms from the triple store took " + (System.currentTimeMillis() - startTime) + "ms.");
+	}
 	
-		CloseableIteration<OWLAxiom, RepositoryException> axiomIt = ots.listAxioms();
+	@Test
+	public void testListAxioms() throws RepositoryException, OWLOntologyCreationException {
+		CloseableIteration<OWLAxiom, RepositoryException> axiomIt = ots.listAxioms(ontology.getOntologyID());
 		Set<OWLAxiom> collected = new HashSet<OWLAxiom>();
 		try {
 			while (axiomIt.hasNext()) {
@@ -67,11 +77,24 @@ public class BasicTests {
 	@Test
 	public void testRemove() throws RepositoryException {
 		OWLAxiom axiom = selectInterestingAxiom();
-		Assert.assertTrue(ots.hasAxiom(axiom));
-		ots.removeAxiom(axiom);
-		Assert.assertFalse(ots.hasAxiom(axiom));
+		Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom));
+		ots.removeAxiom(ontology.getOntologyID(), axiom);
+		Assert.assertFalse(ots.hasAxiom(ontology.getOntologyID(), axiom));
+		ots.removeAxiom(ontology.getOntologyID(), axiom);
+        Assert.assertFalse(ots.hasAxiom(ontology.getOntologyID(), axiom));
 	}
 	
+	@Test
+	public void testAdd() throws RepositoryException {
+	    OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+	    OWLClassExpression someValuesFrom = factory.getOWLObjectSomeValuesFrom(HAS_TOPPING, TOMATO_TOPPING);
+	    OWLClassExpression definition = factory.getOWLObjectIntersectionOf(PIZZA, someValuesFrom);
+	    OWLAxiom axiom = factory.getOWLEquivalentClassesAxiom(CHEESEY_PIZZA, definition);
+	    Assert.assertFalse(ontology.containsAxiom(axiom));
+	    Assert.assertFalse(ots.hasAxiom(ontology.getOntologyID(), axiom));
+	    ots.addAxiom(ontology.getOntologyID(), axiom);
+	    Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom));
+	}
 	
 	protected OWLOntology getOntology() throws OWLOntologyCreationException {
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
@@ -88,12 +111,12 @@ public class BasicTests {
 		Sail sailStack = new MemoryStore();
 		Repository repository = new SailRepository(sailStack);
 		repository.initialize();
-		ots = new OwlTripleStoreImpl(repository);
+		ots = new OwlTripleStoreImpl(repository, ontology.getOWLOntologyManager().getOWLDataFactory());
 		
 
 		long startTime = System.currentTimeMillis();
 		for (OWLAxiom axiom : ontology.getAxioms()) {
-			ots.addAxiom(axiom);
+			ots.addAxiom(ontology.getOntologyID(), axiom);
 		}
 		LOGGER.info("Loading the pizza into the repository took " + (System.currentTimeMillis() - startTime) + "ms.");
 	}
