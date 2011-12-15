@@ -5,8 +5,7 @@ import info.aduna.iteration.CloseableIteration;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.coode.owlapi.rdfxml.parser.AnonymousNodeChecker;
@@ -25,12 +24,13 @@ import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
+import org.semanticweb.owlapi.model.OWLOntologyID;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
-import org.semanticweb.owlapi.vocab.OWL2Datatype;
 import org.xml.sax.SAXException;
 
 public class OwlTripleStoreImpl implements OwlTripleStore {
@@ -38,15 +38,24 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	
 	public static final String NS = "http://protege.org/owl2triplestore.owl";
 	public static final String HASH_CODE = NS + "#hashCode";
+	public static final String SOURCE_ONTOLOGY = NS + "#sourceOntology";
+	public static final String ONTOLOGY_ID = NS + "#ontologyId";
+	public static final String ONTOLOGY_VERSION = NS + "#ontologyVersion";
+	
+	public static final String BNODE_PREFIX = "_:BNode";
+	
 	
 	private org.openrdf.model.URI hashCodeProperty;
+	private org.openrdf.model.URI sourceOntologyProperty;
+	private org.openrdf.model.URI ontologyIdProperty;
+	private org.openrdf.model.URI ontologyVersionProperty;
 	
 	private Repository repository;
-		
-	private Set<IRI> anonymousNodes;
+	private AnonymousResourceHandler anonymousHandler;
+
 	private AnonymousNodeChecker anonymousNodeChecker = new AnonymousNodeChecker() {
         public boolean isAnonymousNode(IRI iri) {
-            return anonymousNodes.contains(iri);  // what the heck?!??
+            return iri.toString().startsWith(BNODE_PREFIX);
         }
 
         public boolean isAnonymousSharedNode(String iri) {
@@ -54,15 +63,19 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
         }
 
         public boolean isAnonymousNode(String iri) {
-            throw new UnsupportedOperationException("not used?");
+            return false;
         }
     };
 	
 	
-	public OwlTripleStoreImpl(Repository repository) {
+	public OwlTripleStoreImpl(Repository repository, OWLDataFactory factory) {
 		this.repository = repository;
-		hashCodeProperty = repository.getValueFactory().createURI(HASH_CODE);
-		anonymousNodes = new HashSet<IRI>();
+		ValueFactory rdfFactory = repository.getValueFactory();
+		hashCodeProperty        = rdfFactory.createURI(HASH_CODE);
+		sourceOntologyProperty  = rdfFactory.createURI(SOURCE_ONTOLOGY);
+		ontologyIdProperty      = rdfFactory.createURI(ONTOLOGY_ID);
+		ontologyVersionProperty = rdfFactory.createURI(ONTOLOGY_VERSION);
+		anonymousHandler = new AnonymousResourceHandler(factory);
 	}
 
 	@Override
@@ -71,29 +84,34 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 
 	@Override
-	public void addAxiom(OWLAxiom axiom) throws RepositoryException {
-		if (getAxiomId(axiom) != null) {
+	public void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    axiom = anonymousHandler.insertSurrogates(axiom);
+	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+		if (getAxiomId(ontologyId, axiom) != null) {
 			return;
 		}
-		RDFTranslator.translate(repository, axiom, hashCodeProperty);
+		RDFTranslator.translate(repository, axiom, hashCodeProperty, sourceOntologyProperty, ontologyRepresentative);
 	}
 
 	@Override
-	public void removeAxiom(OWLAxiom axiom) throws RepositoryException {
-		org.openrdf.model.URI axiomResource = getAxiomId(axiom);
+	public void removeAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    axiom = anonymousHandler.insertSurrogates(axiom);
+		org.openrdf.model.URI axiomResource = getAxiomId(ontologyId, axiom);
 		removeAxiom(axiomResource);
 	}
 	
-	public boolean hasAxiom(OWLAxiom axiom) throws RepositoryException {
-		return getAxiomId(axiom) != null;
+	public boolean hasAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    axiom = anonymousHandler.insertSurrogates(axiom);
+		return getAxiomId(ontologyId, axiom) != null;
 	}
 	
 	@Override
-	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms() throws RepositoryException {
-		RepositoryConnection connection = repository.getConnection();
+	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms(OWLOntologyID ontologyId) throws RepositoryException {
+		org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+	    final RepositoryConnection connection = repository.getConnection();
 		boolean success = false;
 		try {
-			final RepositoryResult<Statement> stmts = connection.getStatements(null, hashCodeProperty, null, false);
+			final RepositoryResult<Statement> stmts = connection.getStatements(null, sourceOntologyProperty, ontologyRepresentative, false);
 			CloseableIteration<OWLAxiom, RepositoryException> it = new CloseableIteration<OWLAxiom, RepositoryException>() {
 
 				@Override
@@ -151,21 +169,28 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		throw new UnsupportedOperationException("Not supported yet");
 	}
 
-	private org.openrdf.model.URI getAxiomId(OWLAxiom axiom) throws RepositoryException {
+	private org.openrdf.model.URI getAxiomId(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
 		ValueFactory factory = repository.getValueFactory();
 		RepositoryConnection connection = repository.getConnection();
 		try {
 			org.openrdf.model.Literal hashCodeValue = factory.createLiteral(axiom.hashCode());
 			RepositoryResult<Statement> correctHashCodes = connection.getStatements(null, hashCodeProperty, hashCodeValue, false);
-			while (correctHashCodes.hasNext()) {
-				Statement stmt = correctHashCodes.next();
-				if (stmt.getSubject() instanceof org.openrdf.model.URI) {
-					org.openrdf.model.URI axiomId = (org.openrdf.model.URI) stmt.getSubject();
-					if (axiom.equals(parseAxiom(connection, axiomId))) {
-						return axiomId;
-					}
-				}
+			try {
+			    while (correctHashCodes.hasNext()) {
+			        Statement stmt = correctHashCodes.next();
+			        if (stmt.getSubject() instanceof org.openrdf.model.URI) {
+			            org.openrdf.model.URI axiomId = (org.openrdf.model.URI) stmt.getSubject();
+			            if (connection.hasStatement(axiomId, sourceOntologyProperty, ontologyRepresentative, false)
+			                    && axiom.equals(parseAxiom(connection, axiomId))) {
+			                return axiomId;
+			            }
+			        }
+			    }
 			}
+            finally {
+                correctHashCodes.close();
+            }
 			return null;
 		}
 		catch (Exception ooce) {
@@ -184,43 +209,54 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		OWLOntology ontology = manager.createOntology();
 		org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
 		RepositoryResult<Statement> triples = connection.getStatements(null, null, null, false, axiomId);
-		RDFWriter writer = null;
-        if (LOGGER.isDebugEnabled()) {
-            File tmp = File.createTempFile("owl2triples", ".owl");
-            writer = new RDFXMLWriter(new FileWriter(tmp));
-            LOGGER.debug("Writing to " + tmp);
-            writer.startRDF();
-        }
-		while (triples.hasNext()) {
-			Statement stmt = triples.next();
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(stmt);
-                writer.handleStatement(stmt);
-            }
-			String subjectName = generateName(stmt.getSubject());
-			String predicateName = generateName(stmt.getPredicate());
-			if (stmt.getObject() instanceof org.openrdf.model.Literal) {
-				addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Literal) stmt.getObject());
-			} else {
-				addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Resource) stmt.getObject());
-			}
+		try {
+		    RDFWriter writer = null;
+		    if (LOGGER.isDebugEnabled()) {
+		        File tmp = File.createTempFile("owl2triples", ".owl");
+		        writer = new RDFXMLWriter(new FileWriter(tmp));
+		        LOGGER.debug("Writing to " + tmp);
+		        writer.startRDF();
+		    }
+		    while (triples.hasNext()) {
+		        Statement stmt = triples.next();
+		        if (LOGGER.isDebugEnabled()) {
+		            LOGGER.debug(stmt);
+		            writer.handleStatement(stmt);
+		        }
+		        String subjectName = generateName(stmt.getSubject());
+		        String predicateName = generateName(stmt.getPredicate());
+		        if (stmt.getObject() instanceof org.openrdf.model.Literal) {
+		            addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Literal) stmt.getObject());
+		        } else {
+		            addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Resource) stmt.getObject());
+		        }
+		    }
+	        if (LOGGER.isDebugEnabled()) {
+	            writer.endRDF();
+	            LOGGER.debug("Parse complete - " + ontology.getAxioms());
+	        }
+		}
+		finally {
+		    triples.close();
 		}
 		consumer.endModel();
-        if (LOGGER.isDebugEnabled()) {
-            writer.endRDF();
-            LOGGER.debug("Parse complete - " + ontology.getAxioms());
-        }
+		
+		OWLAxiom result = null;
 		if (ontology.getAxiomCount() == 1) {
-			return ontology.getAxioms().iterator().next();
+			result= ontology.getAxioms().iterator().next();
 		}
 		else if (ontology.getAxiomCount() > 1) {
 			for (OWLAxiom axiom : ontology.getAxioms()) {
 				if (!(axiom instanceof OWLDeclarationAxiom)) {
-					return axiom;
+					result = axiom;
+					break;
 				}
 			}
 		}
-		return null;
+		if (result != null) {
+		    anonymousHandler.removeSurrogates(result);
+		}
+		return result;
 	}
 	
 	private void addTriple(org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer,
@@ -240,32 +276,110 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 	
 	private void addTriple(org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer,
-                           String subjectName, String predicateName, org.openrdf.model.Resource value) throws SAXException {
-		String objectName = generateName(value);
-		consumer.statementWithResourceValue(subjectName, predicateName, objectName);
-	}
-	
-	private String generateName(org.openrdf.model.Resource resource) {
-		String name;
-		if (resource instanceof BNode) {
-			name = "_:" + ((BNode) resource).getID();
-			anonymousNodes.add(IRI.create(name));
-		}
-		else {
-			name = ((org.openrdf.model.Resource) resource).stringValue();
-		}
-		return name;
+                           String subjectName, 
+                           String predicateName, 
+                           org.openrdf.model.Resource value) throws SAXException {
+		consumer.statementWithResourceValue(subjectName, predicateName, generateName(value));
 	}
 	
 	private void removeAxiom(org.openrdf.model.URI axiomResource) throws RepositoryException {
 		RepositoryConnection connection = repository.getConnection();
+		RepositoryResult<Statement> stmts = null;
 		try {
-			RepositoryResult<Statement> stmts = connection.getStatements(null, null, null, false, axiomResource);
+			stmts = connection.getStatements(null, null, null, false, axiomResource);
 			connection.remove(stmts, axiomResource);
 		}
 		finally {
+		    if (stmts != null) {
+		        stmts.close();
+		    }
 			connection.close();
 		}
+	}
+	
+	private String generateName(org.openrdf.model.Resource resource) {
+	    String name;
+	    if (resource instanceof BNode) {
+	        name = BNODE_PREFIX + ((BNode) resource).getID();
+	    }
+	    else {
+	        name = ((org.openrdf.model.Resource) resource).stringValue();
+	    }
+	    return name;
+	}
+
+	
+	private org.openrdf.model.URI getOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
+	    if (id.isAnonymous()) {
+	        return repository.getValueFactory().createURI(anonymousHandler.getSurrogateId(id).toString());
+	    }
+	    else {
+	        return getNamedOntologyRepresentative(id);
+	    }
+	}
+	
+	private org.openrdf.model.URI getNamedOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
+        org.openrdf.model.URI result = null;
+        RepositoryConnection connection = repository.getConnection();
+        try {
+            org.openrdf.model.URI rdfId = repository.getValueFactory().createURI(id.getOntologyIRI().toString());
+            org.openrdf.model.URI rdfVersion = id.getVersionIRI() != null ? repository.getValueFactory().createURI(id.getVersionIRI().toString()) : null;
+            RepositoryResult<Statement> idStatements = connection.getStatements(null, ontologyIdProperty, rdfId, false);
+            try {
+                while (idStatements.hasNext()) {
+                    Statement idStatement = idStatements.next();
+                    org.openrdf.model.URI possible = (org.openrdf.model.URI) idStatement.getSubject();
+                    RepositoryResult<Statement> versionStatements = connection.getStatements(possible, ontologyVersionProperty, null, false);
+                    try {
+                        if (rdfVersion == null && !versionStatements.hasNext()) {
+                            result = possible;
+                            break;
+                        }
+                        else {
+                            while (versionStatements.hasNext()) {
+                                Statement versionStatement = versionStatements.next();
+                                if (versionStatement.getObject().equals(rdfVersion)) {
+                                    result = possible;
+                                    break;
+                                }
+                            }
+                            if (result != null) {
+                                break;
+                            }
+                        }
+                    }
+                    finally {
+                        versionStatements.close();
+                    }
+                }
+            }
+            finally {
+                idStatements.close();
+            }
+            if (result == null) {
+                result = createNamedOntologyRepresentative(rdfId, rdfVersion);
+            }
+        }
+        finally {
+            connection.close();
+        }
+        return result;
+	}
+
+	private org.openrdf.model.URI createNamedOntologyRepresentative(org.openrdf.model.URI rdfId, org.openrdf.model.URI rdfVersion) throws RepositoryException {
+	    String uriString = NS + "#" + UUID.randomUUID().toString().replaceAll("-", "_");
+	    org.openrdf.model.URI representative = repository.getValueFactory().createURI(uriString);
+	    RepositoryConnection connection = repository.getConnection();
+	    try {
+	       connection.add(representative, ontologyIdProperty, rdfId);
+	       if (rdfVersion != null) {
+	           connection.add(representative, ontologyVersionProperty, rdfVersion);
+	       }
+	    }
+	    finally {
+	        connection.close();
+	    }
+	    return representative;
 	}
 
 }

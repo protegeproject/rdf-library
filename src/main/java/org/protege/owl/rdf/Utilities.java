@@ -27,9 +27,9 @@ public class Utilities {
 	}
 	
 	public static void loadRepository(Repository repository, OWLOntology ontology, boolean sync) throws RepositoryException {
-		OwlTripleStore ots = new OwlTripleStoreImpl(repository);
+		OwlTripleStore ots = new OwlTripleStoreImpl(repository, ontology.getOWLOntologyManager().getOWLDataFactory());
 		for (OWLAxiom axiom : ontology.getAxioms()) {
-			ots.addAxiom(axiom);
+			ots.addAxiom(ontology.getOntologyID(), axiom);
 		}
 		if (sync) {
 			OWLOntologyManager manager = ontology.getOWLOntologyManager();

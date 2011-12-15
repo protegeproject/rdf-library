@@ -16,7 +16,6 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
-import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -31,7 +30,10 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
 	
-	public static void translate(Repository repository, OWLAxiom axiom, org.openrdf.model.URI hashCodeProperty) throws RepositoryException {
+	public static void translate(Repository repository, OWLAxiom axiom, 
+	                             org.openrdf.model.URI hashCodeProperty,
+	                             org.openrdf.model.URI sourceOntologyProperty,
+	                             org.openrdf.model.URI ontologyRepresentative) throws RepositoryException {
 		boolean success = false;
 		
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
@@ -53,6 +55,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 
 			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
 			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
+			connection.add(translator.axiomResource, sourceOntologyProperty, ontologyRepresentative);
 		}
 		catch (RepositoryRuntimeException rre) {
 			throw rre.getCause();

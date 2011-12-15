@@ -22,10 +22,10 @@ public class SynchronizeTripleStoreListener implements OWLOntologyChangeListener
 		for (OWLOntologyChange change : changes) {
 			try {
 				if (change instanceof AddAxiom) {
-					ots.addAxiom(((AddAxiom) change).getAxiom());
+					ots.addAxiom(change.getOntology().getOntologyID(), ((AddAxiom) change).getAxiom());
 				}
 				else if (change instanceof RemoveAxiom) {
-					ots.removeAxiom(((RemoveAxiom) change).getAxiom());
+					ots.removeAxiom(change.getOntology().getOntologyID(), ((RemoveAxiom) change).getAxiom());
 				}
 			}
 			catch (RepositoryException re) {
