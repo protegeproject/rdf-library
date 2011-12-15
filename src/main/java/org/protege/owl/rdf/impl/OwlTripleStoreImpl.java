@@ -125,7 +125,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 					org.openrdf.model.URI axiomResource = (org.openrdf.model.URI) stmt.getSubject();
 					RepositoryConnection connection = repository.getConnection();
 					try {
-						return parseAxiom(connection, axiomResource);
+						return anonymousHandler.removeSurrogates(parseAxiom(connection, axiomResource));
 					}
 					catch (RepositoryException re) {
 						throw re;
@@ -169,6 +169,18 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		throw new UnsupportedOperationException("Not supported yet");
 	}
 
+	/**
+	 * Get the URL which names the graph representing an axiom.
+	 * <p/>
+	 * One of the questions that has caused trouble with this function in the past is whether it should expect the axiom 
+	 * with the surrogates for anonymous individuals or without.  I have decided that it will expect the axiomn with the surrogates
+	 * but this is a relatively arbitrary decision.
+	 * 
+	 * @param ontologyId
+	 * @param axiom
+	 * @return
+	 * @throws RepositoryException
+	 */
 	private org.openrdf.model.URI getAxiomId(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
 	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
 		ValueFactory factory = repository.getValueFactory();
@@ -201,6 +213,23 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		}
 	}
 	
+	/**
+	 * Uses the connection to parse the axiom with a given axiomId.
+	 * <p/>
+	 * One of the things that has caused confusion in the past about this method is whether it 
+	 * should return the axiom with or without its surrogates for anonymous individual.
+	 * I have decided that it would return the version of the axiom with the surrogates (as it is stored in the rdf triple store.)
+	 * 
+	 * 
+	 * @param connection
+	 * @param axiomId
+	 * @return
+	 * @throws OWLOntologyCreationException
+	 * @throws RepositoryException
+	 * @throws SAXException
+	 * @throws IOException
+	 * @throws RDFHandlerException
+	 */
 	private OWLAxiom parseAxiom(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException, IOException, RDFHandlerException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting parse");
@@ -252,9 +281,6 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 					break;
 				}
 			}
-		}
-		if (result != null) {
-		    anonymousHandler.removeSurrogates(result);
 		}
 		return result;
 	}
