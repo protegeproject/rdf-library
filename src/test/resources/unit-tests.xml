@@ -4,7 +4,10 @@
 
     <test name="OWL Triple Store Library Tests">
         <classes>
-            <class name="org.protege.owl.rdf.BasicTests"/>
+            <class name="org.protege.owl.rdf.AnonymityTests"/>
+            <class name="org.protege.owl.rdf.ImportTests"/>
+            <class name="org.protege.owl.rdf.PizzaTests"/>
+            <class name="org.protege.owl.rdf.SynchronizationTests"/>
         </classes>
     </test>
 
