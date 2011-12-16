@@ -31,29 +31,16 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
     public static final Logger LOGGER = Logger.getLogger(RDFTranslator.class);
 	private org.openrdf.model.URI axiomResource;
-	
-	/*
-	 * Woah, Woah, Woah!!!!!!!!!!!  Stop right there buddy!!!!!!!!
-	 * 
-	 * This use of IdentityHashMap screams out in the loudest possible language that 
-	 * it must be wrong.  However note that
-	 * 
-	 * 1. it makes the code work apparently (well this isn't really convincing anyone least of all me) and
-	 * 2. Both the one OWL API implementation of the AbstractTranslator and one of the callers of
-	 *    the getAnonymousNode call utilize exactly this weird and must be broken logic.
-	 *    
-	 * If I replace the IdentityHashMap with a HashMap then certain axioms from the pizza tests get mistranslated in weird ways.
-	 * If the getAnonymousNode call returns a new value each time then the AnonymityTests fail because the annotated axiom 
-	 * construct does not get properly translated (the wrong anonymous node is used the second time).
-	 * 
-	 * Oh my god, Oh my god, Oh my god!  My brain hurts badly.  Not the right thing to have done to my poor aching brain at midnight.
-	 * 
-	 * I must talk to Matthew when he gets back.  
-	 * 
-	 * I think maybe this is caused by a bug in the translateList caller of the getAnonymousNode?  This has been confirmed - 
-	 * when the AbstractTranslator.translateList method gets the anonymous node for the remainder of the list it should be 
-	 * using "list.subList(i, listSize + 1)" rather than "list.subList(i, listSize)".  This bug leads to the need for the 
-	 * following workaround.  I still feel bad but at least I understand.
+
+	/**
+	 * There is a dangerous bend coming up!  If you don't use the identity hash map then this 
+	 * code doesn't work.  The identity hashmap is used to ensure that lists are not reused in 
+	 * non-standard ways by different axioms.  (I think that this might actually lead to an OWL full by
+	 * the specification because of how triples are "consumed" by the translator).  But there is
+	 * an additional problem (not quite a bug because it works) in the AbstractTranslator.translateList
+	 * method in an off by one error when it generates the key for getAnonymousNode.  So using a 
+	 * HashMap here leads to unexpectedly bad results even when you would not expect that lists 
+	 * would be shared.
 	 */
 	private Map<Object, BNode> bnodeMap = new IdentityHashMap<Object, BNode>();
 	
