@@ -1,7 +1,9 @@
 package org.protege.owl.rdf.impl;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
@@ -29,6 +31,29 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
     public static final Logger LOGGER = Logger.getLogger(RDFTranslator.class);
 	private org.openrdf.model.URI axiomResource;
+	
+	/*
+	 * Woah, Woah, Woah!!!!!!!!!!!  Stop right there buddy!!!!!!!!
+	 * 
+	 * This use of IdentityHashMap screams out in the loudest possible language that 
+	 * it must be wrong.  However note that
+	 * 
+	 * 1. it makes the code work apparently (well this isn't really convincing anyone least of all me) and
+	 * 2. Both the one OWL API implementation of the AbstractTranslator and one of the callers of
+	 *    the getAnonymousNode call utilize exactly this weird and must be broken logic.
+	 *    
+	 * If I replace the IdentityHashMap with a HashMap then certain axioms from the pizza tests get mistranslated in weird ways.
+	 * If the getAnonymousNode call returns a new value each time then the AnonymityTests fail because the annotated axiom 
+	 * construct does not get properly translated (the wrong anonymous node is used the second time).
+	 * 
+	 * Oh my god, Oh my god, Oh my god!  My brain hurts badly.  Not the right thing to have done to my poor aching brain at midnight.
+	 * 
+	 * I must talk to Matthew when he gets back.  
+	 * 
+	 * I think maybe this is caused by a bug in the translateList caller of the getAnonymousNode?  Verify this with a test.
+	 */
+	private Map<Object, BNode> bnodeMap = new IdentityHashMap<Object, BNode>();
+	
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
 	
@@ -123,7 +148,12 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 
 	@Override
 	protected BNode getAnonymousNode(Object key) {
-		return rdfFactory.createBNode();
+		BNode node = bnodeMap.get(key);
+		if (node == null) {
+			node = rdfFactory.createBNode();
+			bnodeMap.put(key, node);
+		}
+		return node;
 	}
 
 	@Override
