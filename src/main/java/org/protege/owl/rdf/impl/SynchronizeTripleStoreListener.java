@@ -10,6 +10,7 @@ import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 import org.semanticweb.owlapi.model.RemoveAxiom;
 
+/* TODO - this needs work - Perhaps synchronization is with an OWLOntologyManager */
 public class SynchronizeTripleStoreListener implements OWLOntologyChangeListener {
 	private Logger LOGGER = Logger.getLogger(SynchronizeTripleStoreListener.class);
 	private OwlTripleStore ots;

@@ -7,13 +7,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.sail.SailRepository;
-import org.openrdf.sail.Sail;
-import org.openrdf.sail.memory.MemoryStore;
 import org.protege.owl.rdf.api.OwlTripleStore;
-import org.protege.owl.rdf.impl.OwlTripleStoreImpl;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
@@ -44,8 +39,9 @@ public class PizzaTests {
 	
 	@BeforeMethod
 	public void setup() throws OWLOntologyCreationException, RepositoryException {
-		ontology = getOntology();
-		loadTripleStore();
+	    OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+	    ontology = manager.loadOntologyFromOntologyDocument(new File("src/test/resources/pizza.owl"));
+	    ots = Utilities.getOwlTripleStore(ontology, false);
 	}
 
 	@Test
@@ -85,6 +81,25 @@ public class PizzaTests {
 	}
 	
 	@Test
+	public void testRemoveNotPresent() throws RepositoryException {
+        OWLAxiom present = selectInterestingAxiom();	    
+        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+        OWLClassExpression someValuesFrom = factory.getOWLObjectSomeValuesFrom(HAS_TOPPING, TOMATO_TOPPING);
+        OWLClassExpression definition = factory.getOWLObjectIntersectionOf(PIZZA, someValuesFrom);
+        OWLAxiom notPresent = factory.getOWLEquivalentClassesAxiom(CHEESEY_PIZZA, definition);
+
+        Assert.assertFalse(ontology.containsAxiom(notPresent));
+        Assert.assertTrue(ontology.containsAxiom(present));
+        Assert.assertFalse(ots.hasAxiom(ontology.getOntologyID(), notPresent));
+        Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), present));
+        
+        ots.removeAxiom(ontology.getOntologyID(), notPresent);  // this used to remove everything...
+        
+        Assert.assertFalse(ots.hasAxiom(ontology.getOntologyID(), notPresent));
+        Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), present));
+	}
+	
+	@Test
 	public void testAdd() throws RepositoryException {
 	    OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
 	    OWLClassExpression someValuesFrom = factory.getOWLObjectSomeValuesFrom(HAS_TOPPING, TOMATO_TOPPING);
@@ -96,29 +111,11 @@ public class PizzaTests {
 	    Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom));
 	}
 	
-	protected OWLOntology getOntology() throws OWLOntologyCreationException {
-		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-		return manager.loadOntologyFromOntologyDocument(new File("src/test/resources/pizza.owl"));
-	}
-	
 	protected OWLAxiom selectInterestingAxiom() {
 		OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
 		OWLClass cheeseyPizza = factory.getOWLClass(IRI.create(NS + "#CheeseyPizza"));
 		return ontology.getEquivalentClassesAxioms(cheeseyPizza).iterator().next();
 	}
-	
-	private void loadTripleStore() throws RepositoryException {
-		Sail sailStack = new MemoryStore();
-		Repository repository = new SailRepository(sailStack);
-		repository.initialize();
-		ots = new OwlTripleStoreImpl(repository, ontology.getOWLOntologyManager().getOWLDataFactory());
-		
 
-		long startTime = System.currentTimeMillis();
-		for (OWLAxiom axiom : ontology.getAxioms()) {
-			ots.addAxiom(ontology.getOntologyID(), axiom);
-		}
-		LOGGER.info("Loading the pizza into the repository took " + (System.currentTimeMillis() - startTime) + "ms.");
-	}
 
 }

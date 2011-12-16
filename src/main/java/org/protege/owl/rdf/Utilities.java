@@ -18,16 +18,20 @@ public class Utilities {
 		
 	}
 	
-	public static Repository getRepository(OWLOntology ontology, boolean sync) throws RepositoryException {
+	public static OwlTripleStore getOwlTripleStore(OWLOntology ontology, boolean sync) throws RepositoryException {
 		Sail sailStack = new MemoryStore();
 		Repository repository = new SailRepository(sailStack);
 		repository.initialize();
-		loadRepository(repository, ontology, sync);
-		return repository;
+		return loadRepository(repository, ontology, sync);
 	}
 	
-	public static void loadRepository(Repository repository, OWLOntology ontology, boolean sync) throws RepositoryException {
+	public static OwlTripleStore loadRepository(Repository repository, OWLOntology ontology, boolean sync) throws RepositoryException {
 		OwlTripleStore ots = new OwlTripleStoreImpl(repository, ontology.getOWLOntologyManager().getOWLDataFactory());
+		loadOwlTripleStore(ots, ontology, sync);
+		return ots;
+	}
+	
+	public static void loadOwlTripleStore(OwlTripleStore ots, OWLOntology ontology, boolean sync) throws RepositoryException {
 		for (OWLAxiom axiom : ontology.getAxioms()) {
 			ots.addAxiom(ontology.getOntologyID(), axiom);
 		}
