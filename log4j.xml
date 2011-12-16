@@ -24,10 +24,18 @@
 
   <!-- Debugging session specific settings -->
 
-  <!-- <category name="org.protege.owl.rdf.impl">
-  	<priority value="debug"/>
-  </category> -->
+  <!-- to debug how triples are read from the triplestore.
   
+  <category name="org.protege.owl.rdf.impl.OwlTripleStoreImpl">
+  	<priority value="debug"/>
+  </category> 
+  -->
+
+  <!-- to debug how triples are put into the triple store
+  <category name="org.protege.owl.rdf.impl.RDFTranslator">
+  	<priority value="debug"/>
+  </category> 
+  -->
   
   <!-- End of Debugging session specific settings -->
 

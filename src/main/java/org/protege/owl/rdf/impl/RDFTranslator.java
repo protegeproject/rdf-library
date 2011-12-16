@@ -50,7 +50,10 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	 * 
 	 * I must talk to Matthew when he gets back.  
 	 * 
-	 * I think maybe this is caused by a bug in the translateList caller of the getAnonymousNode?  Verify this with a test.
+	 * I think maybe this is caused by a bug in the translateList caller of the getAnonymousNode?  This has been confirmed - 
+	 * when the AbstractTranslator.translateList method gets the anonymous node for the remainder of the list it should be 
+	 * using "list.subList(i, listSize + 1)" rather than "list.subList(i, listSize)".  This bug leads to the need for the 
+	 * following workaround.  I still feel bad but at least I understand.
 	 */
 	private Map<Object, BNode> bnodeMap = new IdentityHashMap<Object, BNode>();
 	
