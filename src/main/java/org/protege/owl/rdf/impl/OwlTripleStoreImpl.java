@@ -97,7 +97,9 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	public void removeAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
 	    axiom = anonymousHandler.insertSurrogates(axiom);
 		org.openrdf.model.URI axiomResource = getAxiomId(ontologyId, axiom);
-		removeAxiom(axiomResource);
+		if (axiomResource != null) {
+		    removeAxiom(axiomResource);
+		}
 	}
 	
 	public boolean hasAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
@@ -309,6 +311,9 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 	
 	private void removeAxiom(org.openrdf.model.URI axiomResource) throws RepositoryException {
+	    if (axiomResource == null) {
+	        return;
+	    }
 		RepositoryConnection connection = repository.getConnection();
 		RepositoryResult<Statement> stmts = null;
 		try {

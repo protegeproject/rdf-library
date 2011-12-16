@@ -1,5 +1,7 @@
 package org.protege.owl.rdf;
 
+import info.aduna.iteration.CloseableIteration;
+
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.sail.SailRepository;
@@ -40,16 +42,19 @@ public class ImportTests {
     }
     
 	@Test
-	public void basicTest() throws RepositoryException {
-		OWLOntologyID id = new OWLOntologyID();
+	public void testOntologyRepresentative() throws RepositoryException, OWLOntologyCreationException {
+		OWLOntologyID id1 = new OWLOntologyID();
+		OWLOntologyID id2 = new OWLOntologyID();
 		basicTest(ONTOLOGY1, ONTOLOGY2);
 		basicTest(ONTOLOGY1, ONTOLOGY3);
 		basicTest(ONTOLOGY3, ONTOLOGY4);
-		basicTest(ONTOLOGY1, id);
-		basicTest(ONTOLOGY3, id);
+		basicTest(ONTOLOGY1, id1);
+		basicTest(ONTOLOGY3, id1);
+		basicTest(id1, id2);
 	}
 	
-	public void basicTest(OWLOntologyID id1, OWLOntologyID id2) throws RepositoryException {
+	public void basicTest(OWLOntologyID id1, OWLOntologyID id2) throws RepositoryException, OWLOntologyCreationException {
+	    setup();
 		OWLDataFactory factory = OWLManager.getOWLDataFactory();
 		OWLAxiom axiom1 = factory.getOWLEquivalentClassesAxiom(C, D);
 		OWLAxiom axiom2 = factory.getOWLDisjointClassesAxiom(D, E);
@@ -59,6 +64,47 @@ public class ImportTests {
 		Assert.assertFalse(ots.hasAxiom(id2, axiom1));
 		Assert.assertTrue(ots.hasAxiom(id2, axiom2));
 		Assert.assertFalse(ots.hasAxiom(id1, axiom2));
+	}
+	
+	@Test
+	public void testListAxioms() throws RepositoryException {
+	    OWLDataFactory factory = OWLManager.getOWLDataFactory();
+	    OWLAxiom axiom1 = factory.getOWLEquivalentClassesAxiom(C, D);
+	    OWLAxiom axiom2 = factory.getOWLDisjointClassesAxiom(D, E);
+	    ots.addAxiom(ONTOLOGY1, axiom1);
+	    ots.addAxiom(ONTOLOGY2, axiom2);
+	    int counter = 0;
+	    CloseableIteration<OWLAxiom, RepositoryException> it = ots.listAxioms(ONTOLOGY1);
+	    while (it.hasNext()) {
+	        OWLAxiom axiom = it.next();
+	        Assert.assertEquals(axiom, axiom1);
+	        counter++;
+	    }
+	    Assert.assertEquals(counter, 1);
+	    counter = 0;
+	    it = ots.listAxioms(ONTOLOGY2);
+        while (it.hasNext()) {
+            OWLAxiom axiom = it.next();
+            Assert.assertEquals(axiom, axiom2);
+            counter++;
+        }
+        Assert.assertEquals(counter, 1);
+	}
+	
+	@Test
+	public void testDelete() throws RepositoryException {
+        OWLDataFactory factory = OWLManager.getOWLDataFactory();
+        OWLAxiom axiom1 = factory.getOWLEquivalentClassesAxiom(C, D);
+        OWLAxiom axiom2 = factory.getOWLDisjointClassesAxiom(D, E);
+        ots.addAxiom(ONTOLOGY1, axiom1);
+        ots.addAxiom(ONTOLOGY2, axiom2);
+        ots.removeAxiom(ONTOLOGY2, axiom1);
+        Assert.assertTrue(ots.hasAxiom(ONTOLOGY1, axiom1));
+        Assert.assertFalse(ots.hasAxiom(ONTOLOGY2, axiom1));
+        ots.removeAxiom(ONTOLOGY1, axiom1);
+        Assert.assertFalse(ots.hasAxiom(ONTOLOGY1, axiom1));
+        Assert.assertFalse(ots.hasAxiom(ONTOLOGY2, axiom1));
+        Assert.assertTrue(ots.hasAxiom(ONTOLOGY2,axiom2));
 	}
 
 }
