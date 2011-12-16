@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.log4j.Logger;
 import org.coode.owlapi.rdf.model.AbstractTranslator;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Resource;
@@ -26,6 +27,7 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
+    public static final Logger LOGGER = Logger.getLogger(RDFTranslator.class);
 	private org.openrdf.model.URI axiomResource;
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
@@ -34,6 +36,9 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	                             org.openrdf.model.URI hashCodeProperty,
 	                             org.openrdf.model.URI sourceOntologyProperty,
 	                             org.openrdf.model.URI ontologyRepresentative) throws RepositoryException {
+	    if (LOGGER.isDebugEnabled()) {
+	        LOGGER.debug("Starting axiom parse");
+	    }
 		boolean success = false;
 		
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
@@ -66,6 +71,9 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 			if (translator != null) {
 				translator.close(success);
 			}
+		}
+		if (LOGGER.isDebugEnabled()) {
+		    LOGGER.debug("Finished axiom parse");
 		}
 	}
 	
@@ -134,6 +142,10 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	@Override
 	protected void addTriple(Resource subject, org.openrdf.model.URI pred, Value object) {
 		try {
+		    if (LOGGER.isDebugEnabled()) {
+		        LOGGER.debug("Inserting triple into graph with name " + axiomResource);
+		        LOGGER.debug("\t" + subject + ", " + pred + ", " + object);
+		    }
 			connection.add(subject, pred, object, axiomResource);
 		}
 		catch (RepositoryException e) {

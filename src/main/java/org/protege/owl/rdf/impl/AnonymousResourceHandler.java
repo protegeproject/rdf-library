@@ -132,11 +132,10 @@ public class AnonymousResourceHandler {
         
         public void visit(OWLAnnotation node) {
             OWLAnnotationProperty prop = duplicateObject(node.getProperty());
-            node.getValue().accept(this);
             OWLObject rawValue = duplicateObject(node.getValue());
             OWLAnnotationValue val;
             if (rawValue instanceof OWLNamedIndividual) {
-                val = getAnonymousIndividual(((OWLNamedIndividual) rawValue).getIRI());
+                val = ((OWLNamedIndividual) rawValue).getIRI();
             }
             else {
                 val = (OWLAnnotationValue) rawValue;
