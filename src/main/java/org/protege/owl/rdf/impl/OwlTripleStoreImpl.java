@@ -24,6 +24,7 @@ import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClassExpression;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLDeclarationAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -236,9 +237,54 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting parse");
         }
+
+		OWLRDFConsumer consumer = consumeTriples(connection, axiomId);
+		consumer.endModel();
+		OWLOntology ontology = consumer.getOntology();
+		OWLAxiom result = null;
+		if (ontology.getAxiomCount() == 1) {
+			result= ontology.getAxioms().iterator().next();
+		}
+		else if (ontology.getAxiomCount() > 1) {
+			for (OWLAxiom axiom : ontology.getAxioms()) {
+				if (!(axiom instanceof OWLDeclarationAxiom)) {
+					result = axiom;
+					break;
+				}
+			}
+		}
+		return result;
+	}
+	
+	public OWLClassExpression parseClassExpression(BNode classExpressionNode) throws RepositoryException {
+		RepositoryConnection connection = repository.getConnection();
+		try {
+			RepositoryResult<Statement> triples = connection.getStatements(classExpressionNode, null, null, false);
+			Statement stmt = triples.next();
+			org.openrdf.model.URI axiomId = (org.openrdf.model.URI) stmt.getContext();
+			OWLRDFConsumer consumer = consumeTriples(connection, axiomId);
+			String nodeName = generateName(classExpressionNode);
+			OWLClassExpression ce = consumer.translateClassExpression(IRI.create(nodeName));
+			consumer.endModel();
+			return ce;
+		}
+		catch (Exception e) {
+			if (e instanceof RepositoryException) {
+				throw (RepositoryException) e;
+			}
+			else {
+				throw new RepositoryException(e);
+			}
+		}
+		finally {
+			connection.close();
+		}
+	}
+	
+	private OWLRDFConsumer consumeTriples(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, IOException, RDFHandlerException, SAXException {
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = manager.createOntology();
-		org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
+		OWLRDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
 		RepositoryResult<Statement> triples = connection.getStatements(null, null, null, false, axiomId);
 		try {
 		    RDFWriter writer = null;
@@ -270,21 +316,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		finally {
 		    triples.close();
 		}
-		consumer.endModel();
-		
-		OWLAxiom result = null;
-		if (ontology.getAxiomCount() == 1) {
-			result= ontology.getAxioms().iterator().next();
-		}
-		else if (ontology.getAxiomCount() > 1) {
-			for (OWLAxiom axiom : ontology.getAxioms()) {
-				if (!(axiom instanceof OWLDeclarationAxiom)) {
-					result = axiom;
-					break;
-				}
-			}
-		}
-		return result;
+		return consumer;
 	}
 	
 	private void addTriple(org.semanticweb.owlapi.rdf.syntax.RDFConsumer consumer,
