@@ -5,7 +5,10 @@ Bundle-SymbolicName: org.protege.owl.rdf;singleton:=true
 Bundle-Version: 1.0.0
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Vendor: The Protege Development Team
-Bundle-Classpath: .,lib/openrdf-sesame-2.4.0-onejar.jar
+Bundle-Classpath: .,lib/openrdf-sesame-2.4.0-onejar.jar,
+ lib/slf4j-api-1.6.1.jar,
+ lib/logback-core-0.9.28.jar,
+ lib/logback-classic-09.928.jar
 Import-Package: info.aduna.collections,
  info.aduna.collections.iterators,
  info.aduna.concurrent,
@@ -24,6 +27,11 @@ Import-Package: info.aduna.collections,
  info.aduna.webapp.filters,
  info.aduna.webapp.util,
  info.aduna.xml,
+ javax.imageio.spi,
+ javax.xml.datatype,
+ org.apache.log4j,
+ org.coode.owlapi.rdf.model,
+ org.coode.owlapi.rdfxml.parser,
  org.openrdf,
  org.openrdf.console,
  org.openrdf.http.client,
@@ -121,13 +129,10 @@ Import-Package: info.aduna.collections,
  org.openrdf.sail.rdbms.postgresql,
  org.openrdf.sail.rdbms.schema,
  org.openrdf.sail.rdbms.util,
- org.apache.log4j,
- org.coode.owlapi.rdf.model,
- org.coode.owlapi.rdfxml.parser,
  org.semanticweb.owlapi.apibinding,
  org.semanticweb.owlapi.model,
- org.semanticweb.owlapi.util,
  org.semanticweb.owlapi.rdf.syntax,
+ org.semanticweb.owlapi.util,
  org.semanticweb.owlapi.vocab
 Export-Package: info.aduna.collections,
  info.aduna.collections.iterators,
@@ -243,4 +248,7 @@ Export-Package: info.aduna.collections,
  org.openrdf.sail.rdbms.optimizers,
  org.openrdf.sail.rdbms.postgresql,
  org.openrdf.sail.rdbms.schema,
- org.openrdf.sail.rdbms.util
+ org.openrdf.sail.rdbms.util,
+ org.protege.owl.rdf,
+ org.protege.owl.rdf.api,
+ org.protege.owl.rdf.impl
