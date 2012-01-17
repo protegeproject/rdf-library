@@ -22,6 +22,7 @@ import org.openrdf.rio.RDFWriter;
 import org.openrdf.rio.rdfxml.RDFXMLWriter;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.RDFXMLOntologyFormat;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClassExpression;
@@ -266,7 +267,12 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 			String nodeName = generateName(classExpressionNode);
 			OWLClassExpression ce = consumer.translateClassExpression(IRI.create(nodeName));
 			consumer.endModel();
-			return ce;
+			if (!((TrackingOntologyFormat) consumer.getOntologyFormat()).getFailed()) {
+				return ce;
+			}
+			else {
+				return null;
+			}
 		}
 		catch (Exception e) {
 			if (e instanceof RepositoryException) {
@@ -285,6 +291,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = manager.createOntology();
 		OWLRDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
+		consumer.setOntologyFormat(new TrackingOntologyFormat());
 		RepositoryResult<Statement> triples = connection.getStatements(null, null, null, false, axiomId);
 		try {
 		    RDFWriter writer = null;
