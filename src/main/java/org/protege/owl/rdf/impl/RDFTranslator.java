@@ -76,6 +76,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
 			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
 			connection.add(translator.axiomResource, sourceOntologyProperty, ontologyRepresentative);
+			success = true;
 		}
 		catch (RepositoryRuntimeException rre) {
 			throw rre.getCause();
