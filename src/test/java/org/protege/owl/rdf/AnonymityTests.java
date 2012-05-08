@@ -13,11 +13,15 @@ import org.openrdf.sail.memory.MemoryStore;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.protege.owl.rdf.impl.OwlTripleStoreImpl;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLIndividual;
+import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyID;
 import org.testng.Assert;
@@ -25,6 +29,25 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class AnonymityTests {
+	public static final String NS = "http://protege.org/ontologies/RDFAnonymityTest.owl";
+	public static final OWLObjectProperty P;
+	public static final OWLObjectProperty Q;
+	
+	public static final OWLAnnotationProperty R;
+	
+	public static final OWLNamedIndividual I;
+	
+	static {
+		OWLDataFactory factory = OWLManager.getOWLDataFactory();
+		P = factory.getOWLObjectProperty(IRI.create(NS + "#p"));
+		Q = factory.getOWLObjectProperty(IRI.create(NS + "#q"));
+		
+		R = factory.getOWLAnnotationProperty(IRI.create(NS + "#r"));
+		
+		I = factory.getOWLNamedIndividual(IRI.create(NS + "#i"));
+	}
+	
+	
     private OwlTripleStore ots;
     private OWLOntologyID ontologyId = new OWLOntologyID();
     
@@ -116,6 +139,27 @@ public class AnonymityTests {
             OWLAxiom axiomFound = axioms.next();
             Assert.assertEquals(axiomFound, axiom1);
             Assert.assertEquals(axiomFound.getAnnotations().size(), 1);
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+    }
+    
+    @Test
+    public void annotationAssertionWithAnonymousSubject() throws RepositoryException {
+    	OWLDataFactory factory = OWLManager.getOWLDataFactory();
+    	OWLAnonymousIndividual j = factory.getOWLAnonymousIndividual();
+    	OWLAnonymousIndividual k = factory.getOWLAnonymousIndividual();
+    	
+    	OWLAxiom axiom = factory.getOWLAnnotationAssertionAxiom(j, factory.getOWLAnnotation(R, k));
+    	
+    	ots.addAxiom(ontologyId, axiom);
+    	
+        Assert.assertTrue(ots.hasAxiom(ontologyId, axiom));
+        int count = 0;
+        CloseableIteration<OWLAxiom, RepositoryException> axioms = ots.listAxioms(ontologyId);
+        while (axioms.hasNext()) {
+            OWLAxiom axiomFound = axioms.next();
+            Assert.assertEquals(axiomFound, axiom);
             count++;
         }
         Assert.assertEquals(count, 1);

@@ -117,7 +117,14 @@ public class AnonymousResourceHandler {
         }
         
         public void visit(OWLAnnotationAssertionAxiom axiom) {
-            OWLAnnotationSubject subject = duplicateObject(axiom.getSubject());
+        	OWLObject rawSubject = duplicateObject(axiom.getSubject());
+            OWLAnnotationSubject subject;
+            if (rawSubject instanceof OWLNamedIndividual) {
+            	subject = ((OWLNamedIndividual) rawSubject).getIRI();
+            }
+            else {
+            	subject = (OWLAnnotationSubject) rawSubject;
+            }
             OWLAnnotationProperty prop = duplicateObject(axiom.getProperty());
             OWLObject rawValue = duplicateObject(axiom.getValue());
             OWLAnnotationValue value;
@@ -162,6 +169,9 @@ public class AnonymousResourceHandler {
         
         public void visit(OWLAnnotationAssertionAxiom axiom) {
             OWLAnnotationSubject subject = duplicateObject(axiom.getSubject());
+            if (subject instanceof IRI && isSurrogate((IRI) subject)) {
+            	subject = getAnonymousIndividual((IRI) subject);
+            }
             OWLAnnotationProperty prop = duplicateObject(axiom.getProperty());
             OWLAnnotationValue value = duplicateObject(axiom.getValue());
             if (value instanceof IRI && isSurrogate((IRI) value)) {
