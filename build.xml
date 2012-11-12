@@ -10,9 +10,9 @@
 
    <property environment="env"/>
    <property name = "protege.home"      location="${env.PROTEGE_HOME}"/>
+   <property name = "bundlor.home"      location="${env.BUNDLOR_HOME}"/>
    <property file="${protege.home}/build.properties"/>
    <property file="local.properties"/>
-
    <property file="version.properties"/>
    <property name="major.version" value="1"/>
    <property name="minor.version" value="0"/>
@@ -30,6 +30,7 @@
    <property name = "lib"               location = "./lib"/>
    <property name = "genlib"            location = "${build}/lib"/>
    <property name = "manifest"          location = "${build}/manifest.mf"/>
+   <property name = "manifest.bundlor"  location = "./META-INF/manifest.bundlor"/>
 
    <property name = "protege.common"    location="${protege.home}/bundles"/>
    <property name = "protege.plugins"   location="${protege.home}/plugins"/>
@@ -60,6 +61,12 @@
      <mkdir dir = "${classes}"/>
      <mkdir dir = "${classes}/lib"/>
      <mkdir dir = "${genlib}"/>
+     <condition property="use.bundlor">
+       <and>
+         <available file="${bundlor.home}"     type = "dir"/>
+         <available file="${manifest.bundlor}" type = "file"/>
+       </and>
+     </condition>
    </target>  
 
    <!-- ============================================================= -->
@@ -113,19 +120,7 @@
        </unjar>
    </target>
 
-
-   <target name="build.manifest">
-     <copy tofile="${manifest}" 
-           file="META-INF/MANIFEST.MF" overwrite="true"/>
-     <manifest file="${manifest}" 
-               mode = "update">
-        <attribute name="Built-By" value = "${user.name}"/>
-        <attribute name="Bundle-Version" value="${bundle.version}"/>
-     </manifest>
-   </target>
-
-
-   <target name="copy.resources" depends="build.manifest">
+   <target name="copy.resources">
      <copy todir="${classes}">
        <fileset dir="${src}">
          <include name="**/*"/>
@@ -157,7 +152,36 @@
      </javac>
    </target>
 
-   <target name = "jar" depends = "compile, copy.resources">
+   <target name="use.existing.manifest" unless="use.bundlor">
+     <copy tofile="${manifest}" 
+           file="META-INF/MANIFEST.MF" overwrite="true"/>
+     <manifest file="${manifest}" 
+               mode = "update">
+        <attribute name="Built-By" value = "${user.name}"/>
+        <attribute name="Bundle-Version" value="${bundle.version}"/>
+     </manifest>
+   </target>
+
+   <target name="bundlor.manifest" depends="copy.resources, compile" if="use.bundlor">
+      <java classname="org.eclipse.virgo.bundlor.commandline.Bundlor"
+            failonerror="true" fork="true">
+        <classpath>
+          <fileset dir="${bundlor.home}/plugins" includes="*.jar"/>
+        </classpath>
+        <jvmarg value="-Dbundle.version=${bundle.version}"/>
+        <jvmarg value="-Duser.name=${user.name}"/>
+        <jvmarg value="-Dplugin=${plugin}"/>
+        <arg value = "-i"/> <arg value="${classes}"/>
+        <arg value = "-m"/> <arg value="./META-INF/manifest.bundlor"/>
+        <arg value = "-o"/> <arg value = "."/>
+      </java>
+     <copy tofile="${manifest}" 
+           file="META-INF/MANIFEST.MF" overwrite="true"/>
+   </target>
+
+
+
+   <target name = "jar" depends = "compile, copy.resources, use.existing.manifest,bundlor.manifest">
      <jar jarfile = "${build}/${plugin}.jar"
           basedir = "${classes}" 
           manifest = "${build}/manifest.mf"/>
