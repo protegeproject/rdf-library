@@ -137,10 +137,6 @@
            <exclude name="build.xml"/>
        </fileset>
      </copy>
-   	 <!-- the manifest doesn't belong here but this is good for IDE's -->
-     <mkdir dir="${classes}/META-INF"/>  
-     <copy todir="${classes}/META-INF"   
-           file = "${manifest}"/>
    </target>
 
    <target name = "compile" depends = "buildlibs, checkProtegeLibsAndReport">
