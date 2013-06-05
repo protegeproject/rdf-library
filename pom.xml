@@ -3,29 +3,17 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>org.sonatype.oss</groupId>
-		<artifactId>oss-parent</artifactId>
-		<version>7</version>
+		<groupId>edu.stanford.protege</groupId>
+		<artifactId>protege-parent</artifactId>
+		<version>5.0.0-beta-01-SNAPSHOT</version>
 	</parent>
-
-	<groupId>edu.stanford.protege</groupId>
+	
 	<artifactId>org.protege.owl.rdf</artifactId>
 	<version>1.0.3-SNAPSHOT</version>
 	<packaging>bundle</packaging>
 
 	<name>OWLAPI RDF Library</name>
 	<description>OWLAPI RDF Library</description>
-	<url>http://protege.stanford.edu</url>
-	<organization>
-		<name>Stanford Center for Biomedical Informatics Research</name>
-		<url>http://bmir.stanford.edu/</url>
-	</organization>
-	<licenses>
-		<license>
-			<name>GNU Lesser General Public License</name>
-			<url>http://www.gnu.org/copyleft/lesser.html</url>
-		</license>
-	</licenses>
 	
 	<developers>
 		<developer>
@@ -34,36 +22,13 @@
 		</developer>
 	</developers>
 	
-	<mailingLists>
-		<mailingList>
-			<name>p4-feedback</name>
-			<subscribe>http://mailman.stanford.edu/mailman/listinfo/p4-feedback</subscribe>
-			<unsubscribe>http://mailman.stanford.edu/mailman/listinfo/p4-feedback</unsubscribe>
-			<post>p4-feedback@lists.stanford.edu</post>
-			<archive>https://mailman.stanford.edu/pipermail/p4-feedback/</archive>
-			<otherArchives>
-				<otherArchive>http://protege-ontology-editor-knowledge-acquisition-system.136.n4.nabble.com/Protege-OWL-4-x-Support-f21363.html</otherArchive>
-			</otherArchives>
-		</mailingList>
-	</mailingLists>
-
 	<scm>
 		<connection>scm:svn:http://smi-protege.stanford.edu/repos/protege/protege4/libraries/org.protege.owl.rdf/trunk/</connection>
 		<developerConnection>scm:svn:https://smi-protege.stanford.edu/repos/protege/protege4/libraries/org.protege.owl.rdf/trunk/</developerConnection>
 		<url>http://smi-protege.stanford.edu/svn/protege4/libraries/org.protege.owl.rdf/</url>
 	</scm>
 
-    <properties>
-	    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
 	<dependencies>
-		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
-		</dependency>
-		
 		<!-- I don't think we need to depend on the entire Sesame core framework? -->
 		<!-- http://www.openrdf.org/doc/sesame2/users/ch04.html -->
 		<!-- <dependency>
@@ -125,32 +90,10 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.5</version>
 		</dependency>
-
-		<dependency>
-			<groupId>net.sourceforge.owlapi</groupId>
-			<artifactId>owlapi-distribution</artifactId>
-			<version>3.4.3</version>
-		</dependency>
-        
-		<dependency>
-			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>
-			<version>6.8</version>
-		</dependency>
 	</dependencies>
 	
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.0</version>
-				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
-				</configuration>
-			</plugin>
-		
             <plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
@@ -161,9 +104,24 @@
 						<Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
 						<Bundle-Vendor>The Protege Development Team</Bundle-Vendor>
 						<Embed-Dependency>sesame-queryparser-serql, sesame-queryparser-sparql</Embed-Dependency>
-						<Export-Package>${project.artifactId}*;version=${project.version}, info.aduna.*;version="2.7.0", org.openrdf.*;version="2.7.0", org.slf4j.*;version="1.7.5", ch.qos.logback.*;version="1.0.12"</Export-Package>
+						<Export-Package>
+							${project.artifactId}*;version=${project.version}, 
+							info.aduna.*;version="2.7.0", 
+							org.openrdf.*;version="2.7.0", 
+							org.slf4j.*;version="1.7.5", 
+							ch.qos.logback.*;version="1.0.12"
+						</Export-Package>
 						<Export-Service>org.openrdf.query.parser.QueryParserFactory</Export-Service>
-						<Import-Package>!org.apache.commons.httpclient.*, !groovy.lang, !javax.jms, !javax.mail.*, !javax.servlet.*, !org.codehaus.*, !sun.reflect.*, *</Import-Package>
+						<Import-Package>
+							!org.apache.commons.httpclient.*, 
+							!groovy.lang, 
+							!javax.jms, 
+							!javax.mail.*, 
+							!javax.servlet.*, 
+							!org.codehaus.*, 
+							!sun.reflect.*, 
+							*
+						</Import-Package>
 					</instructions>
 					<executions>
 						<execution>
@@ -209,61 +167,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>2.2.1</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.9</version>
-				<executions>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
-
-	<profiles>
-		<profile>
-			<id>sign-artifacts</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.4</version>
-						<executions>
-							<execution>
-								<id>sign-artifacts</id>
-								<phase>verify</phase>
-								<goals>
-									<goal>sign</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 </project>
