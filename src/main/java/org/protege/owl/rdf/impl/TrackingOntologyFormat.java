@@ -1,9 +1,9 @@
 package org.protege.owl.rdf.impl;
 
+import org.semanticweb.owlapi.formats.RDFXMLDocumentFormat;
 import org.semanticweb.owlapi.io.RDFResourceParseError;
-import org.semanticweb.owlapi.io.RDFXMLOntologyFormat;
 
-public class TrackingOntologyFormat extends RDFXMLOntologyFormat {
+public class TrackingOntologyFormat extends RDFXMLDocumentFormat {
 	private boolean failed = false;
 	
 	@Override
