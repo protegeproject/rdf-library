@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
-import org.coode.owlapi.rdf.model.AbstractTranslator;
+import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Resource;
 import org.openrdf.model.Value;
