@@ -1,6 +1,8 @@
 .classpath
 .project
 .settings/
+.idea/*
 META-INF/
 build.properties
 target/
+*.iml

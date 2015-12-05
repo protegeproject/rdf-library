@@ -25,6 +25,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.util.AlwaysOutputId;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 
@@ -102,7 +103,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false);
+		super(manager, ontology, false, new AlwaysOutputId());
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
