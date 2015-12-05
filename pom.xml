@@ -205,7 +205,7 @@
 				<configuration>
 					<skip>true</skip>
                     <systemPropertyVariables>
-                        <log4j.configuration>file:log4j.xml</log4j.configuration>
+                        <log4j.configuration>file:src/main/resources/log4j.xml</log4j.configuration>
                     </systemPropertyVariables>
 				</configuration>
 				<executions>
@@ -223,7 +223,7 @@
                             <systemProperties>
                                 <property>
                                     <name>log4j.configuration</name>
-                                    <value>file:log4j.xml</value>
+                                    <value>file:src/main/resources/log4j.xml</value>
                                 </property>
                             </systemProperties>
 				        </configuration>
