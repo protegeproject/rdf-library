@@ -2,7 +2,6 @@ package org.protege.owl.rdf;
 
 import java.io.File;
 
-import org.apache.log4j.Logger;
 import org.openrdf.repository.RepositoryException;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -20,7 +19,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class SynchronizationTests {
-    public static Logger LOGGER = Logger.getLogger(PizzaTests.class);
     public static String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
 
     public static final OWLClass PIZZA          = OWLManager.getOWLDataFactory().getOWLClass(IRI.create(NS + "#Pizza"));

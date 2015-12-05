@@ -7,7 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.apache.log4j.Logger;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Statement;
 import org.openrdf.model.ValueFactory;
@@ -33,10 +32,12 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.OWLRDFConsumer;
 import org.semanticweb.owlapi.rdf.rdfxml.parser.RDFConsumer;
 import org.semanticweb.owlapi.util.AnonymousNodeChecker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 public class OwlTripleStoreImpl implements OwlTripleStore {
-	public static final Logger LOGGER = Logger.getLogger(OwlTripleStoreImpl.class);
+	public static final Logger LOGGER = LoggerFactory.getLogger(OwlTripleStoreImpl.class);
 	
 	public static final String NS = "http://protege.org/owl2triplestore.owl";
 	public static final String HASH_CODE = NS + "#hashCode";
@@ -309,7 +310,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		    while (triples.hasNext()) {
 		        Statement stmt = triples.next();
 		        if (LOGGER.isDebugEnabled()) {
-		            LOGGER.debug(stmt);
+		            LOGGER.debug(stmt.toString());
 		            writer.handleStatement(stmt);
 		        }
 		        String subjectName = generateName(stmt.getSubject());

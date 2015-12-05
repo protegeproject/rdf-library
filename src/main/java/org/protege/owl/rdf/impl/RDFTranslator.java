@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.log4j.Logger;
 import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Resource;
@@ -27,10 +26,12 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.util.AlwaysOutputId;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
-    public static final Logger LOGGER = Logger.getLogger(RDFTranslator.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(RDFTranslator.class);
 	private org.openrdf.model.URI axiomResource;
 
 	/**

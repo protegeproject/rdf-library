@@ -6,7 +6,6 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
 import org.openrdf.repository.RepositoryException;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -19,13 +18,15 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 
 public class PizzaTests {
-	public static Logger LOGGER = Logger.getLogger(PizzaTests.class);
+	public static Logger LOGGER = LoggerFactory.getLogger(PizzaTests.class);
 	public static String NS = "http://www.co-ode.org/ontologies/pizza/pizza.owl";
 
 	public static final OWLClass PIZZA          = OWLManager.getOWLDataFactory().getOWLClass(IRI.create(NS + "#Pizza"));
