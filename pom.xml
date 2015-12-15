@@ -157,7 +157,7 @@
 				<extensions>true</extensions>
 				<configuration>
 					<instructions>
-						<Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
+						<Bundle-SymbolicName>org.protege.owl.rdf;singleton:=true</Bundle-SymbolicName>
 						<Bundle-Vendor>The Protege Development Team</Bundle-Vendor>
 						<Embed-Dependency>sesame-queryparser-serql, sesame-queryparser-sparql</Embed-Dependency>
 						<Export-Package>
