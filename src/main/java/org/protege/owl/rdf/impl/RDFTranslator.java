@@ -1,12 +1,5 @@
 package org.protege.owl.rdf.impl;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
 import org.openrdf.model.BNode;
 import org.openrdf.model.Resource;
 import org.openrdf.model.Value;
@@ -15,19 +8,14 @@ import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.AddAxiom;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLAxiom;
-import org.semanticweb.owlapi.model.OWLEntity;
-import org.semanticweb.owlapi.model.OWLLiteral;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyChange;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
 import org.semanticweb.owlapi.util.AlwaysOutputId;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
@@ -45,7 +33,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	 * would be shared.
 	 */
 	private Map<Object, BNode> bnodeMap = new IdentityHashMap<Object, BNode>();
-	
+	private static OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
 	
@@ -57,9 +45,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	        LOGGER.debug("Starting axiom parse");
 	    }
 		boolean success = false;
-		
-		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-		
+
 		RDFTranslator translator = null;
 		
 		try {
@@ -96,11 +82,9 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 	
 	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
-		OWLOntology ontology = manager.createOntology();
-		List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
-		changes.add(new AddAxiom(ontology, axiom));
-		manager.applyChanges(changes);
-		return ontology;
+		Set<OWLAxiom> axiomSet = new HashSet<>();
+		axiomSet.add(axiom);
+		return manager.createOntology(axiomSet);
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
