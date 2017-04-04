@@ -15,6 +15,7 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 
 
@@ -88,7 +89,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false, new AlwaysOutputId());
+		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), null); // TODO do not pass null
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
@@ -131,6 +132,12 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 			bnodeMap.put(key, node);
 		}
 		return node;
+	}
+
+	@Nonnull
+	@Override
+	protected Resource getAnonymousNodeForExpressions(@Nonnull Object o) {
+		return null; // TODO not return null
 	}
 
 	@Override
