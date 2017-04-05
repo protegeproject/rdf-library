@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
@@ -89,7 +90,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), null); // TODO do not pass null
+		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(0));
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
