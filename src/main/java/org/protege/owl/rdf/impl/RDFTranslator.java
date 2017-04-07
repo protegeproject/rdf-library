@@ -90,7 +90,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(0));
+		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger());
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
@@ -138,7 +138,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	@Nonnull
 	@Override
 	protected Resource getAnonymousNodeForExpressions(@Nonnull Object o) {
-		return null; // TODO not return null
+		return rdfFactory.createBNode();
 	}
 
 	@Override
