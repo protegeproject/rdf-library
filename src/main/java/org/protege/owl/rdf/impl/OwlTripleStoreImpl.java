@@ -5,6 +5,8 @@ import info.aduna.iteration.CloseableIteration;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.openrdf.model.BNode;
@@ -91,13 +93,20 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 
 	@Override
 	public void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
-	    axiom = anonymousHandler.insertSurrogates(axiom);
-	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
-		if (getAxiomId(ontologyId, axiom) != null) {
-			return;
-		}
-		RDFTranslator.translate(repository, axiom, hashCodeProperty, sourceOntologyProperty, ontologyRepresentative);
-	}
+	    axiom = anonymousHandler.insertSurrogates(axiom);          
+            if (getAxiomId(ontologyId, axiom) != null) {
+		return;
+            }
+            Set<OWLAxiom> axiomSet = new HashSet();
+            axiomSet.add(axiom);
+            translate(ontologyId,axiomSet); 
+    }
+    
+	@Override
+	public void addAxioms(OWLOntologyID ontologyId, Set<OWLAxiom> axioms) throws RepositoryException {
+            axioms.forEach(anonymousHandler::insertSurrogates); 
+            translate(ontologyId,axioms);     
+        }
 
 	@Override
 	public void removeAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
@@ -459,5 +468,9 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	    }
 	    return representative;
 	}
-
+    
+    private void translate(OWLOntologyID ontologyId,Set<OWLAxiom> axiomSet) throws RepositoryException {
+        org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+        RDFTranslator.translate(repository, axiomSet, hashCodeProperty, sourceOntologyProperty, ontologyRepresentative);    
+    }
 }
