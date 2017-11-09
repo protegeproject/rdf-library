@@ -92,15 +92,14 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 
 	@Override
-	public void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
-	    axiom = anonymousHandler.insertSurrogates(axiom);          
-            if (getAxiomId(ontologyId, axiom) != null) {
-		return;
-            }
-            Set<OWLAxiom> axiomSet = new HashSet();
-            axiomSet.add(axiom);
-            translate(ontologyId,axiomSet); 
-    }
+        public void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    axiom = anonymousHandler.insertSurrogates(axiom);
+	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+		if (getAxiomId(ontologyId, axiom) != null) {
+			return;
+		}
+		RDFTranslator.translate(repository, axiom, hashCodeProperty, sourceOntologyProperty, ontologyRepresentative);
+	}
     
 	@Override
 	public void addAxioms(OWLOntologyID ontologyId, Set<OWLAxiom> axioms) throws RepositoryException {
