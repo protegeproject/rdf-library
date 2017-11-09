@@ -1,7 +1,7 @@
 package org.protege.owl.rdf.api;
 
 import info.aduna.iteration.CloseableIteration;
-
+import java.util.Set;
 import org.openrdf.model.BNode;
 import org.openrdf.repository.Repository;
 import org.openrdf.repository.RepositoryException;
@@ -15,6 +15,8 @@ public interface OwlTripleStore {
 	
 	void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException;
 	
+    void addAxioms(OWLOntologyID ontologyId, Set<OWLAxiom> axiom) throws RepositoryException;
+        
 	void removeAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException;
 	
 	boolean hasAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException;

@@ -39,7 +39,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
 	
-	public static void translate(Repository repository, OWLAxiom axiom, 
+        public static void translate(Repository repository, OWLAxiom axiom, 
 	                             org.openrdf.model.URI hashCodeProperty,
 	                             org.openrdf.model.URI sourceOntologyProperty,
 	                             org.openrdf.model.URI ontologyRepresentative) throws RepositoryException {
@@ -52,20 +52,11 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		
 		try {
 			OWLOntology ontology = createOntology(manager, axiom);
-		    translator = new RDFTranslator(repository, manager, ontology);
-			ValueFactory rdfFactory = repository.getValueFactory();
-			RepositoryConnection connection = translator.getConnection();
-			axiom.accept(translator);
-			for (OWLEntity entity : axiom.getSignature()) {  // why aren't these getting included?
-				connection.add(rdfFactory.createURI(entity.getIRI().toString()), 
-						       rdfFactory.createURI(OWLRDFVocabulary.RDF_TYPE.getIRI().toString()), 
-						       rdfFactory.createURI(entity.getEntityType().getVocabulary().getIRI().toString()), 
-						       translator.axiomResource);
-			}
-
-			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
-			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
-			connection.add(translator.axiomResource, sourceOntologyProperty, ontologyRepresentative);
+		        translator = new RDFTranslator(repository, manager, ontology);
+		         axiom.accept(translator);
+                         addRdfTypes(repository,translator,axiom);
+                         addControlTriples(repository,translator,axiom,hashCodeProperty,sourceOntologyProperty,ontologyRepresentative);
+			
 			success = true;
 		}
 		catch (RepositoryRuntimeException rre) {
@@ -82,12 +73,69 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		    LOGGER.debug("Finished axiom parse");
 		}
 	}
-	
-	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
+        
+        public static void translate(Repository repository, Set<OWLAxiom> axioms, 
+	                             org.openrdf.model.URI hashCodeProperty,
+	                             org.openrdf.model.URI sourceOntologyProperty,
+	                             org.openrdf.model.URI ontologyRepresentative) throws RepositoryException {
+	    if (LOGGER.isDebugEnabled()) {
+	        LOGGER.debug("Starting axiom parse");
+	    }
+		boolean success = false;
+		RDFTranslator translator = null;		
+		try {		       
+	        OWLOntology ontology = manager.createOntology(axioms);
+                for (OWLAxiom axiom: axioms){  
+                    translator = new RDFTranslator(repository, manager, ontology);
+                    axiom.accept(translator);
+                    addRdfTypes(repository,translator,axiom);
+                    addControlTriples(repository,translator,axiom,hashCodeProperty,sourceOntologyProperty,ontologyRepresentative);
+                    }
+          	success = true;
+                }
+		catch (RepositoryRuntimeException rre) {
+			throw rre.getCause();
+		}
+                catch (OWLOntologyCreationException e) {
+			throw new RepositoryException(e);
+		}
+		finally {
+			if (translator != null) {
+				translator.close(success);
+			}
+		}
+		if (LOGGER.isDebugEnabled()) {
+		    LOGGER.debug("Finished axiom parse");
+		}
+	}
+        
+        private static void addControlTriples(Repository repository,RDFTranslator translator, OWLAxiom axiom,org.openrdf.model.URI hashCodeProperty, org.openrdf.model.URI sourceOntologyProperty, org.openrdf.model.URI ontologyRepresentative) throws RepositoryException{
+                        ValueFactory rdfFactory = repository.getValueFactory();
+                        RepositoryConnection connection = translator.getConnection();
+                        org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
+			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
+			connection.add(translator.axiomResource, sourceOntologyProperty, ontologyRepresentative);
+        }
+       
+        private static void addRdfTypes(Repository repository, RDFTranslator translator, OWLAxiom axiom) throws RepositoryException{
+            RepositoryConnection connection = translator.getConnection();
+            ValueFactory rdfFactory = repository.getValueFactory();
+            for (OWLEntity entity : axiom.getSignature()) {  // why aren't these getting included?
+			       
+                connection.add(rdfFactory.createURI(entity.getIRI().toString()), 
+			            rdfFactory.createURI(OWLRDFVocabulary.RDF_TYPE.getIRI().toString()), 
+			            rdfFactory.createURI(entity.getEntityType().getVocabulary().getIRI().toString()), 
+                                translator.axiomResource);
+			}
+            
+}
+        
+        private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
 		Set<OWLAxiom> axiomSet = new HashSet<>();
 		axiomSet.add(axiom);
 		return manager.createOntology(axiomSet);
 	}
+
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
 		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(1));
@@ -95,6 +143,8 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
 	}
+        
+        
 
 	
 	public void close(boolean success) throws RepositoryException {
