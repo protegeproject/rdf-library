@@ -17,6 +17,7 @@ import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
 import org.semanticweb.owlapi.model.OWLObject;
 import org.semanticweb.owlapi.model.OWLOntologyID;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.util.OWLObjectDuplicator;
 
 public class AnonymousResourceHandler {
@@ -108,15 +109,16 @@ public class AnonymousResourceHandler {
     
     private class SurrogateInserter extends OWLObjectDuplicator {
         public SurrogateInserter(OWLDataFactory factory) {
-            super(factory);
+          	// FIXME this cast is _very_ likely not correct.
+            super((OWLOntologyManager)factory);
         }
         
-        public void visit(OWLAnonymousIndividual i) {
+        public OWLAnonymousIndividual visit(OWLAnonymousIndividual i) {
             IRI iri = getSurrogateId(i);
-            setLastObject(factory.getOWLNamedIndividual(iri));
+            return (OWLAnonymousIndividual)t(factory.getOWLNamedIndividual(iri));
         }
         
-        public void visit(OWLAnnotationAssertionAxiom axiom) {
+        public OWLAnnotationAssertionAxiom visit(OWLAnnotationAssertionAxiom axiom) {
         	OWLObject rawSubject = duplicateObject(axiom.getSubject());
             OWLAnnotationSubject subject;
             if (rawSubject instanceof OWLNamedIndividual) {
@@ -134,10 +136,10 @@ public class AnonymousResourceHandler {
             else {
                 value = (OWLAnnotationValue) rawValue;
             }
-            setLastObject(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
+            return t(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
         }
         
-        public void visit(OWLAnnotation node) {
+        public OWLAnnotation visit(OWLAnnotation node) {
             OWLAnnotationProperty prop = duplicateObject(node.getProperty());
             OWLObject rawValue = duplicateObject(node.getValue());
             OWLAnnotationValue val;
@@ -147,7 +149,7 @@ public class AnonymousResourceHandler {
             else {
                 val = (OWLAnnotationValue) rawValue;
             }
-            setLastObject(factory.getOWLAnnotation(prop, val));
+            return t(factory.getOWLAnnotation(prop, val));
         }
 
     }
@@ -155,19 +157,20 @@ public class AnonymousResourceHandler {
     private class SurrogateRemover extends OWLObjectDuplicator {
         
         public SurrogateRemover(OWLDataFactory factory) {
-            super(factory);
+          	// FIXME this cast is _very_ likely not correct.
+            super((OWLOntologyManager)factory);
         }
         
-        public void visit(OWLNamedIndividual i) {
+        public OWLNamedIndividual visit(OWLNamedIndividual i) {
             if (isSurrogate(i.getIRI())) {
-                setLastObject(getAnonymousIndividual(i.getIRI()));
+                return (OWLNamedIndividual)t(getAnonymousIndividual(i.getIRI()));
             }
             else {
-                setLastObject(i);
+                return t(i);
             }
         }
         
-        public void visit(OWLAnnotationAssertionAxiom axiom) {
+        public OWLAnnotationAssertionAxiom visit(OWLAnnotationAssertionAxiom axiom) {
             OWLAnnotationSubject subject = duplicateObject(axiom.getSubject());
             if (subject instanceof IRI && isSurrogate((IRI) subject)) {
             	subject = getAnonymousIndividual((IRI) subject);
@@ -177,17 +180,17 @@ public class AnonymousResourceHandler {
             if (value instanceof IRI && isSurrogate((IRI) value)) {
                 value = getAnonymousIndividual((IRI) value);
             }
-            setLastObject(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
+            return t(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
         }
         
-        public void visit(OWLAnnotation node) {
+        public OWLAnnotation visit(OWLAnnotation node) {
             node.getProperty().accept(this);
             OWLAnnotationProperty prop = (OWLAnnotationProperty) duplicateObject(node.getProperty());
             OWLAnnotationValue val = (OWLAnnotationValue) duplicateObject(node.getValue());
             if (val instanceof IRI && isSurrogate((IRI) val)) {
                 val = getAnonymousIndividual((IRI) val);
             }
-            setLastObject(factory.getOWLAnnotation(prop, val));
+            return t(factory.getOWLAnnotation(prop, val));
         }
     }
 }

@@ -1,12 +1,11 @@
 package org.protege.owl.rdf;
 
-import info.aduna.iteration.CloseableIteration;
-
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.openrdf.repository.RepositoryException;
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.repository.RepositoryException;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;

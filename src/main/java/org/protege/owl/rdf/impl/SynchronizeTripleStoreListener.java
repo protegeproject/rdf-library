@@ -2,7 +2,7 @@ package org.protege.owl.rdf.impl;
 
 import java.util.List;
 
-import org.openrdf.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.RepositoryException;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
