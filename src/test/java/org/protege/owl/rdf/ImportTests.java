@@ -1,12 +1,11 @@
 package org.protege.owl.rdf;
 
-import info.aduna.iteration.CloseableIteration;
-
-import org.openrdf.repository.Repository;
-import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.sail.SailRepository;
-import org.openrdf.sail.Sail;
-import org.openrdf.sail.memory.MemoryStore;
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.repository.Repository;
+import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.sail.SailRepository;
+import org.eclipse.rdf4j.sail.Sail;
+import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.protege.owl.rdf.impl.OwlTripleStoreImpl;
 import org.semanticweb.owlapi.apibinding.OWLManager;

@@ -1,28 +1,38 @@
 package org.protege.owl.rdf.impl;
 
-import org.openrdf.model.BNode;
-import org.openrdf.model.Resource;
-import org.openrdf.model.Value;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.repository.Repository;
-import org.openrdf.repository.RepositoryConnection;
-import org.openrdf.repository.RepositoryException;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.eclipse.rdf4j.model.BNode;
+import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.URI;
+import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.repository.Repository;
+import org.eclipse.rdf4j.repository.RepositoryConnection;
+import org.eclipse.rdf4j.repository.RepositoryException;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
-import org.semanticweb.owlapi.util.AlwaysOutputId;
+import org.semanticweb.owlapi.util.OWLAnonymousIndividualsWithMultipleOccurrences;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
-
-public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
+public class RDFTranslator extends AbstractTranslator<Value, Resource, URI,  Literal> {
     public static final Logger LOGGER = LoggerFactory.getLogger(RDFTranslator.class);
-	private org.openrdf.model.URI axiomResource;
+	private URI axiomResource;
 
 	/**
 	 * There is a dangerous bend coming up!  If you don't use the identity hash map then this 
@@ -40,9 +50,9 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	private RepositoryConnection connection;
 	
 	public static void translate(Repository repository, OWLAxiom axiom, 
-	                             org.openrdf.model.URI hashCodeProperty,
-	                             org.openrdf.model.URI sourceOntologyProperty,
-	                             org.openrdf.model.URI ontologyRepresentative) throws RepositoryException {
+	                             URI hashCodeProperty,
+	                             URI sourceOntologyProperty,
+	                             URI ontologyRepresentative) throws RepositoryException {
 	    if (LOGGER.isDebugEnabled()) {
 	        LOGGER.debug("Starting axiom parse");
 	    }
@@ -63,7 +73,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 						       translator.axiomResource);
 			}
 
-			org.openrdf.model.Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
+			Literal hashCodeValue = rdfFactory.createLiteral(axiom.hashCode());
 			connection.add(translator.axiomResource, hashCodeProperty, hashCodeValue);
 			connection.add(translator.axiomResource, sourceOntologyProperty, ontologyRepresentative);
 			success = true;
@@ -90,7 +100,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(1));
+		super(manager, ontology, false, new OWLAnonymousIndividualsWithMultipleOccurrences());
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
@@ -111,17 +121,17 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		return connection;
 	}
 	
-	public org.openrdf.model.URI getAxiomResource() {
+	public URI getAxiomResource() {
 		return axiomResource;
 	}
 
 	@Override
-	protected org.openrdf.model.URI getResourceNode(IRI iri) {
+	protected URI getResourceNode(IRI iri) {
 		return rdfFactory.createURI(iri.toString());
 	}
 
 	@Override
-	protected org.openrdf.model.URI getPredicateNode(IRI iri) {
+	protected URI getPredicateNode(IRI iri) {
 		return rdfFactory.createURI(iri.toString());
 	}
 
@@ -135,14 +145,14 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		return node;
 	}
 
-	@Nonnull
-	@Override
-	protected Resource getAnonymousNodeForExpressions(@Nonnull Object o) {
-		return rdfFactory.createBNode();
-	}
+//	@Nonnull
+//	@Override
+//	protected Resource getAnonymousNodeForExpressions(@Nonnull Object o) {
+//		return rdfFactory.createBNode();
+//	}
 
 	@Override
-	protected org.openrdf.model.Literal getLiteralNode(OWLLiteral literal) {
+	protected Literal getLiteralNode(OWLLiteral literal) {
 		if (literal.isRDFPlainLiteral() && literal.getLang() != null) {
 			return rdfFactory.createLiteral(literal.getLiteral(), literal.getLang());
 		}
@@ -155,7 +165,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	@Override
-	protected void addTriple(Resource subject, org.openrdf.model.URI pred, Value object) {
+	protected void addTriple(Resource subject, URI pred, Value object) {
 		try {
 		    if (LOGGER.isDebugEnabled()) {
 		        LOGGER.debug("Inserting triple into graph with name " + axiomResource);

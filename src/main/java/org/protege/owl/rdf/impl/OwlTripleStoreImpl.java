@@ -1,22 +1,24 @@
 package org.protege.owl.rdf.impl;
 
-import info.aduna.iteration.CloseableIteration;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.openrdf.model.BNode;
-import org.openrdf.model.Statement;
-import org.openrdf.model.ValueFactory;
-import org.openrdf.repository.Repository;
-import org.openrdf.repository.RepositoryConnection;
-import org.openrdf.repository.RepositoryException;
-import org.openrdf.repository.RepositoryResult;
-import org.openrdf.rio.RDFHandlerException;
-import org.openrdf.rio.RDFWriter;
-import org.openrdf.rio.rdfxml.RDFXMLWriter;
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.model.BNode;
+import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.URI;
+import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.repository.Repository;
+import org.eclipse.rdf4j.repository.RepositoryConnection;
+import org.eclipse.rdf4j.repository.RepositoryException;
+import org.eclipse.rdf4j.repository.RepositoryResult;
+import org.eclipse.rdf4j.rio.RDFHandlerException;
+import org.eclipse.rdf4j.rio.RDFWriter;
+import org.eclipse.rdf4j.rio.rdfxml.RDFXMLWriter;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -48,10 +50,10 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	public static final String BNODE_PREFIX = "_:BNode";
 	
 	
-	private org.openrdf.model.URI hashCodeProperty;
-	private org.openrdf.model.URI sourceOntologyProperty;
-	private org.openrdf.model.URI ontologyIdProperty;
-	private org.openrdf.model.URI ontologyVersionProperty;
+	private org.eclipse.rdf4j.model.URI hashCodeProperty;
+	private org.eclipse.rdf4j.model.URI sourceOntologyProperty;
+	private org.eclipse.rdf4j.model.URI ontologyIdProperty;
+	private org.eclipse.rdf4j.model.URI ontologyVersionProperty;
 	
 	private Repository repository;
 	private AnonymousResourceHandler anonymousHandler;
@@ -92,7 +94,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	@Override
 	public void addAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
 	    axiom = anonymousHandler.insertSurrogates(axiom);
-	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+	    URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
 		if (getAxiomId(ontologyId, axiom) != null) {
 			return;
 		}
@@ -102,7 +104,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	@Override
 	public void removeAxiom(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
 	    axiom = anonymousHandler.insertSurrogates(axiom);
-		org.openrdf.model.URI axiomResource = getAxiomId(ontologyId, axiom);
+		URI axiomResource = getAxiomId(ontologyId, axiom);
 		if (axiomResource != null) {
 		    removeAxiom(axiomResource);
 		}
@@ -116,7 +118,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	
 	@Override
 	public CloseableIteration<OWLAxiom, RepositoryException> listAxioms(OWLOntologyID ontologyId) throws RepositoryException {
-		org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+		URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
 	    final RepositoryConnection connection = repository.getConnection();
 		boolean success = false;
 		try {
@@ -131,7 +133,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 				@Override
 				public OWLAxiom next() throws RepositoryException {
 					Statement stmt = stmts.next();
-					org.openrdf.model.URI axiomResource = (org.openrdf.model.URI) stmt.getSubject();
+					URI axiomResource = (URI) stmt.getSubject();
 					RepositoryConnection connection = repository.getConnection();
 					try {
 						return anonymousHandler.removeSurrogates(parseAxiom(connection, axiomResource));
@@ -190,18 +192,18 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	 * @return
 	 * @throws RepositoryException
 	 */
-	private org.openrdf.model.URI getAxiomId(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
-	    org.openrdf.model.URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
+	private URI getAxiomId(OWLOntologyID ontologyId, OWLAxiom axiom) throws RepositoryException {
+	    URI ontologyRepresentative = getOntologyRepresentative(ontologyId);
 		ValueFactory factory = repository.getValueFactory();
 		RepositoryConnection connection = repository.getConnection();
 		try {
-			org.openrdf.model.Literal hashCodeValue = factory.createLiteral(axiom.hashCode());
+			Literal hashCodeValue = factory.createLiteral(axiom.hashCode());
 			RepositoryResult<Statement> correctHashCodes = connection.getStatements(null, hashCodeProperty, hashCodeValue, false);
 			try {
 			    while (correctHashCodes.hasNext()) {
 			        Statement stmt = correctHashCodes.next();
-			        if (stmt.getSubject() instanceof org.openrdf.model.URI) {
-			            org.openrdf.model.URI axiomId = (org.openrdf.model.URI) stmt.getSubject();
+			        if (stmt.getSubject() instanceof URI) {
+			            URI axiomId = (URI) stmt.getSubject();
 			            if (connection.hasStatement(axiomId, sourceOntologyProperty, ontologyRepresentative, false)
 			                    && axiom.equals(parseAxiom(connection, axiomId))) {
 			                return axiomId;
@@ -239,7 +241,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	 * @throws IOException
 	 * @throws RDFHandlerException
 	 */
-	private OWLAxiom parseAxiom(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException, IOException, RDFHandlerException {
+	private OWLAxiom parseAxiom(RepositoryConnection connection, URI axiomId) throws OWLOntologyCreationException, RepositoryException, SAXException, IOException, RDFHandlerException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Starting parse");
         }
@@ -268,7 +270,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		try {
 			RepositoryResult<Statement> triples = connection.getStatements(classExpressionNode, null, null, false);
 			Statement stmt = triples.next();
-			org.openrdf.model.URI axiomId = (org.openrdf.model.URI) stmt.getContext();
+			URI axiomId = (URI) stmt.getContext();
 			OWLRDFConsumer consumer = consumeTriples(connection, axiomId);
 			String nodeName = generateName(classExpressionNode);
 			OWLClassExpression ce = consumer.translateClassExpression(IRI.create(nodeName));
@@ -293,7 +295,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		}
 	}
 	
-	private OWLRDFConsumer consumeTriples(RepositoryConnection connection, org.openrdf.model.URI axiomId) throws OWLOntologyCreationException, RepositoryException, IOException, RDFHandlerException, SAXException {
+	private OWLRDFConsumer consumeTriples(RepositoryConnection connection, URI axiomId) throws OWLOntologyCreationException, RepositoryException, IOException, RDFHandlerException, SAXException {
 		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 		OWLOntology ontology = manager.createOntology();
 		OWLRDFConsumer consumer = new OWLRDFConsumer(ontology, anonymousNodeChecker, new OWLOntologyLoaderConfiguration());
@@ -315,10 +317,10 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		        }
 		        String subjectName = generateName(stmt.getSubject());
 		        String predicateName = generateName(stmt.getPredicate());
-		        if (stmt.getObject() instanceof org.openrdf.model.Literal) {
-		            addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Literal) stmt.getObject());
+		        if (stmt.getObject() instanceof Literal) {
+		            addTriple(consumer, subjectName, predicateName, (Literal) stmt.getObject());
 		        } else {
-		            addTriple(consumer, subjectName, predicateName, (org.openrdf.model.Resource) stmt.getObject());
+		            addTriple(consumer, subjectName, predicateName, (Resource) stmt.getObject());
 		        }
 		    }
 	        if (LOGGER.isDebugEnabled()) {
@@ -333,7 +335,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 	
     private void addTriple(RDFConsumer consumer,
-			               String subjectName, String predicateName, org.openrdf.model.Literal literal) throws SAXException {
+			               String subjectName, String predicateName, Literal literal) throws SAXException {
 		String datatype;
 		if (literal.getDatatype() == null) {
 			datatype = null; // OWL2Datatype.RDF_PLAIN_LITERAL.getIRI().toString();
@@ -344,18 +346,18 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		consumer.statementWithLiteralValue(subjectName, 
 				                           predicateName, 
 				                           literal.stringValue(), 
-				                           literal.getLanguage(), 
+				                           literal.getLanguage().orElse(null), 
 				                           datatype);
 	}
 	
     private void addTriple(RDFConsumer consumer,
                            String subjectName, 
                            String predicateName, 
-                           org.openrdf.model.Resource value) throws SAXException {
+                           Resource value) throws SAXException {
 		consumer.statementWithResourceValue(subjectName, predicateName, generateName(value));
 	}
 	
-	private void removeAxiom(org.openrdf.model.URI axiomResource) throws RepositoryException {
+	private void removeAxiom(URI axiomResource) throws RepositoryException {
 	    if (axiomResource == null) {
 	        return;
 	    }
@@ -373,7 +375,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 		}
 	}
 	
-	private String generateName(org.openrdf.model.Resource resource) {
+	private String generateName(Resource resource) {
 	    String name;
 	    if (resource instanceof BNode) {
 	        name = BNODE_PREFIX + ((BNode) resource).getID();
@@ -385,7 +387,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	}
 
 	
-	private org.openrdf.model.URI getOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
+	private URI getOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
 	    if (id.isAnonymous()) {
 	        return repository.getValueFactory().createURI(anonymousHandler.getSurrogateId(id).toString());
 	    }
@@ -394,19 +396,19 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
 	    }
 	}
 	
-	private org.openrdf.model.URI getNamedOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
-        org.openrdf.model.URI result = null;
+	private URI getNamedOntologyRepresentative(OWLOntologyID id) throws RepositoryException {
+        URI result = null;
         RepositoryConnection connection = repository.getConnection();
         try {
-            org.openrdf.model.URI rdfId = repository.getValueFactory().createURI(id.getOntologyIRI().toString());
-            org.openrdf.model.URI rdfVersion = id.getVersionIRI().isPresent() ? repository
+            URI rdfId = repository.getValueFactory().createURI(id.getOntologyIRI().toString());
+            URI rdfVersion = id.getVersionIRI().isPresent() ? repository
                     .getValueFactory().createURI(
                             id.getVersionIRI().get().toString()) : null;
             RepositoryResult<Statement> idStatements = connection.getStatements(null, ontologyIdProperty, rdfId, false);
             try {
                 while (idStatements.hasNext()) {
                     Statement idStatement = idStatements.next();
-                    org.openrdf.model.URI possible = (org.openrdf.model.URI) idStatement.getSubject();
+                    URI possible = (URI) idStatement.getSubject();
                     RepositoryResult<Statement> versionStatements = connection.getStatements(possible, ontologyVersionProperty, null, false);
                     try {
                         if (rdfVersion == null && !versionStatements.hasNext()) {
@@ -444,9 +446,9 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
         return result;
 	}
 
-	private org.openrdf.model.URI createNamedOntologyRepresentative(org.openrdf.model.URI rdfId, org.openrdf.model.URI rdfVersion) throws RepositoryException {
+	private URI createNamedOntologyRepresentative(URI rdfId, URI rdfVersion) throws RepositoryException {
 	    String uriString = NS + "#" + UUID.randomUUID().toString().replaceAll("-", "_");
-	    org.openrdf.model.URI representative = repository.getValueFactory().createURI(uriString);
+	    URI representative = repository.getValueFactory().createURI(uriString);
 	    RepositoryConnection connection = repository.getConnection();
 	    try {
 	       connection.add(representative, ontologyIdProperty, rdfId);
