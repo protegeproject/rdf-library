@@ -109,6 +109,7 @@ public class AnonymousResourceHandler {
     
     private class SurrogateInserter extends OWLObjectDuplicator {
         public SurrogateInserter(OWLDataFactory factory) {
+          	// FIXME this cast is _very_ likely not correct.
             super((OWLOntologyManager)factory);
         }
         
@@ -156,6 +157,7 @@ public class AnonymousResourceHandler {
     private class SurrogateRemover extends OWLObjectDuplicator {
         
         public SurrogateRemover(OWLDataFactory factory) {
+          	// FIXME this cast is _very_ likely not correct.
             super((OWLOntologyManager)factory);
         }
         
