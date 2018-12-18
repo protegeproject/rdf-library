@@ -34,7 +34,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	 * HashMap here leads to unexpectedly bad results even when you would not expect that lists 
 	 * would be shared.
 	 */
-	private Map<Object, BNode> bnodeMap = new IdentityHashMap<Object, BNode>();
+	private Map<Object, BNode> bnodeMap = new IdentityHashMap<>();
 	private static OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
 	private ValueFactory rdfFactory;
 	private RepositoryConnection connection;
@@ -82,7 +82,21 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		    LOGGER.debug("Finished axiom parse");
 		}
 	}
-	
+
+	/**
+	 * Gets a fresh anonymous resource.
+	 *
+	 * @param key     A key for the resource. Each call will create a new node; nodes cannot clash.
+	 * @param isAxiom true if axiom
+	 * @return The resource
+	 */
+	@Nonnull
+	@Override
+	protected Resource getAnonymousNodeForExpressions(@Nonnull Object key,
+													  boolean isAxiom) {
+		return rdfFactory.createBNode();
+	}
+
 	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
 		Set<OWLAxiom> axiomSet = new HashSet<>();
 		axiomSet.add(axiom);
@@ -90,7 +104,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(1));
+		super(manager, ontology, false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(1), new HashMap<>());
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
@@ -110,23 +124,22 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	public RepositoryConnection getConnection() {
 		return connection;
 	}
-	
-	public org.openrdf.model.URI getAxiomResource() {
-		return axiomResource;
-	}
 
+	@Nonnull
 	@Override
-	protected org.openrdf.model.URI getResourceNode(IRI iri) {
+	protected org.openrdf.model.URI getResourceNode(@Nonnull IRI iri) {
 		return rdfFactory.createURI(iri.toString());
 	}
 
+	@Nonnull
 	@Override
-	protected org.openrdf.model.URI getPredicateNode(IRI iri) {
+	protected org.openrdf.model.URI getPredicateNode(@Nonnull IRI iri) {
 		return rdfFactory.createURI(iri.toString());
 	}
 
+	@Nonnull
 	@Override
-	protected BNode getAnonymousNode(Object key) {
+	protected BNode getAnonymousNode(@Nonnull Object key) {
 		BNode node = bnodeMap.get(key);
 		if (node == null) {
 			node = rdfFactory.createBNode();
@@ -137,13 +150,8 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 
 	@Nonnull
 	@Override
-	protected Resource getAnonymousNodeForExpressions(@Nonnull Object o) {
-		return rdfFactory.createBNode();
-	}
-
-	@Override
-	protected org.openrdf.model.Literal getLiteralNode(OWLLiteral literal) {
-		if (literal.isRDFPlainLiteral() && literal.getLang() != null) {
+	protected org.openrdf.model.Literal getLiteralNode(@Nonnull OWLLiteral literal) {
+		if (literal.isRDFPlainLiteral() && !literal.getLang().isEmpty()) {
 			return rdfFactory.createLiteral(literal.getLiteral(), literal.getLang());
 		}
 		else if (literal.isRDFPlainLiteral()) {
@@ -155,7 +163,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	@Override
-	protected void addTriple(Resource subject, org.openrdf.model.URI pred, Value object) {
+	protected void addTriple(@Nonnull Resource subject, @Nonnull org.openrdf.model.URI pred, @Nonnull Value object) {
 		try {
 		    if (LOGGER.isDebugEnabled()) {
 		        LOGGER.debug("Inserting triple into graph with name " + axiomResource);

@@ -11,6 +11,8 @@ import org.semanticweb.owlapi.model.RemoveAxiom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 /* TODO - this needs work - Perhaps synchronization is with an OWLOntologyManager */
 public class SynchronizeTripleStoreListener implements OWLOntologyChangeListener {
 	private Logger LOGGER = LoggerFactory.getLogger(SynchronizeTripleStoreListener.class);
@@ -20,14 +22,14 @@ public class SynchronizeTripleStoreListener implements OWLOntologyChangeListener
 		this.ots = ots;
 	}
 
-	public void ontologiesChanged(List<? extends OWLOntologyChange> changes) {
+	public void ontologiesChanged(@Nonnull List<? extends OWLOntologyChange> changes) {
 		for (OWLOntologyChange change : changes) {
 			try {
 				if (change instanceof AddAxiom) {
-					ots.addAxiom(change.getOntology().getOntologyID(), ((AddAxiom) change).getAxiom());
+					ots.addAxiom(change.getOntology().getOntologyID(), change.getAxiom());
 				}
 				else if (change instanceof RemoveAxiom) {
-					ots.removeAxiom(change.getOntology().getOntologyID(), ((RemoveAxiom) change).getAxiom());
+					ots.removeAxiom(change.getOntology().getOntologyID(), change.getAxiom());
 				}
 			}
 			catch (RepositoryException re) {
