@@ -8,6 +8,7 @@ import org.openrdf.sail.memory.MemoryStore;
 import org.protege.owl.rdf.api.OwlTripleStore;
 import org.protege.owl.rdf.impl.OwlTripleStoreImpl;
 import org.protege.owl.rdf.impl.SynchronizeTripleStoreListener;
+import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -19,15 +20,15 @@ public class Utilities {
 		
 	}
 	
-	public static OwlTripleStore getOwlTripleStore(OWLDataFactory factory) throws RepositoryException {
+	public static OwlTripleStore getOwlTripleStore(OWLOntologyManager manager) throws RepositoryException {
 		Sail sailStack = new MemoryStore();
 		Repository repository = new SailRepository(sailStack);
 		repository.initialize();
-		return new OwlTripleStoreImpl(repository, factory);
+		return new OwlTripleStoreImpl(repository, manager);
 	}
 	
 	public static OwlTripleStore getOwlTripleStore(OWLOntologyManager manager, boolean sync) throws RepositoryException {
-		OwlTripleStore ots = getOwlTripleStore(manager.getOWLDataFactory());
+		OwlTripleStore ots = getOwlTripleStore(manager);
 		for (OWLOntology ontology : manager.getOntologies()) {
 			loadOwlTripleStore(ots, ontology, false);
 		}
@@ -38,7 +39,7 @@ public class Utilities {
 	}
 	
 	public static OwlTripleStore getOwlTripleStore(OWLOntology ontology, boolean sync) throws RepositoryException {
-		OwlTripleStore ots = getOwlTripleStore(ontology.getOWLOntologyManager().getOWLDataFactory());
+		OwlTripleStore ots = getOwlTripleStore(ontology.getOWLOntologyManager());
 		loadOwlTripleStore(ots, ontology, sync);
 		return ots;
 	}

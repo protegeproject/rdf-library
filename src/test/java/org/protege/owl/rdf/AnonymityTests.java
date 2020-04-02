@@ -56,7 +56,7 @@ public class AnonymityTests {
         Sail sailStack = new MemoryStore();
         Repository repository = new SailRepository(sailStack);
         repository.initialize();
-        ots = new OwlTripleStoreImpl(repository, OWLManager.getOWLDataFactory());
+        ots = new OwlTripleStoreImpl(repository, OWLManager.createOWLOntologyManager());
     }
     
     @Test

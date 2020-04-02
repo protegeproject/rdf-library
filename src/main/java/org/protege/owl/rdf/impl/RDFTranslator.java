@@ -10,14 +10,12 @@ import org.openrdf.repository.RepositoryException;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.rdf.model.AbstractTranslator;
-import org.semanticweb.owlapi.util.AlwaysOutputId;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openrdf.model.URI, org.openrdf.model.Literal> {
@@ -83,20 +81,6 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 		}
 	}
 
-	/**
-	 * Gets a fresh anonymous resource.
-	 *
-	 * @param key     A key for the resource. Each call will create a new node; nodes cannot clash.
-	 * @param isAxiom true if axiom
-	 * @return The resource
-	 */
-	@Nonnull
-	@Override
-	protected Resource getAnonymousNodeForExpressions(@Nonnull Object key,
-													  boolean isAxiom) {
-		return rdfFactory.createBNode();
-	}
-
 	private static OWLOntology createOntology(OWLOntologyManager manager, OWLAxiom axiom) throws OWLOntologyCreationException {
 		Set<OWLAxiom> axiomSet = new HashSet<>();
 		axiomSet.add(axiom);
@@ -104,7 +88,7 @@ public class RDFTranslator extends AbstractTranslator<Value, Resource, org.openr
 	}
 
 	private RDFTranslator(Repository repository, OWLOntologyManager manager, OWLOntology ontology) throws RepositoryException {
-		super(manager, ontology, null,false, new AlwaysOutputId(), new AlwaysOutputId(), new AtomicInteger(1), new HashMap<>(), new HashSet<>());
+		super(manager, ontology, null,false, i -> true, new HashSet<>());
 		rdfFactory = repository.getValueFactory();
 		axiomResource = rdfFactory.createURI(OwlTripleStoreImpl.NS + "/" + UUID.randomUUID().toString().replace('-', '_'));
 		connection = repository.getConnection();
