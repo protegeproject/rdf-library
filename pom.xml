@@ -183,6 +183,7 @@
 							!javax.servlet.*, 
 							!org.codehaus.*, 
 							!sun.reflect.*, 
+							!com.google.common.base,
 							*
 						</Import-Package>
 					</instructions>
