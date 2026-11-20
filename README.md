@@ -10,4 +10,4 @@ Build and run the translation, round-trip, surrogate identity, and parser regres
 mvn --batch-mode clean verify
 ```
 
-For a paired development build, install this snapshot with `mvn --batch-mode clean install`, then build the `protegeproject/sparql-query-plugin` Protégé 6 migration branch. Install both resulting bundle JARs in an assembled Protégé 6 distribution for interactive verification. This branch is tracked by protegeproject/protege#1357; the SPARQL migration is tracked by #1358.
+For a paired local build, install this release with `mvn --batch-mode clean install`, then build SPARQL Query 4 from `protegeproject/sparql-query-plugin`. Install both resulting bundle JARs in an assembled Protégé 6 distribution for interactive verification. This branch is tracked by protegeproject/protege#1357; the SPARQL migration is tracked by #1358.
