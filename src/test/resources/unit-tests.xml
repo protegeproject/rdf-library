@@ -8,6 +8,7 @@
             <class name="org.protege.owl.rdf.ImportTests"/>
             <class name="org.protege.owl.rdf.PizzaTests"/>
             <class name="org.protege.owl.rdf.SynchronizationTests"/>
+            <class name="org.protege.owl.rdf.SurrogateTransformationTests"/>
         </classes>
     </test>
 

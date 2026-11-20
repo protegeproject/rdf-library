@@ -49,7 +49,7 @@ public class PizzaTests {
 	public void testHasAxiom() throws RepositoryException, OWLOntologyCreationException {
 		long startTime = System.currentTimeMillis();
 		for (OWLAxiom axiom : ontology.getAxioms()) {
-			Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom));
+			Assert.assertTrue(ots.hasAxiom(ontology.getOntologyID(), axiom), "Axiom missing after RDF round trip: " + axiom);
 		}
 		LOGGER.info("Parsing all the axioms from the triple store took " + (System.currentTimeMillis() - startTime) + "ms.");
 	}
@@ -61,7 +61,7 @@ public class PizzaTests {
 		try {
 			while (axiomIt.hasNext()) {
 				OWLAxiom axiom = axiomIt.next();
-				Assert.assertTrue(ontology.containsAxiom(axiom));
+				Assert.assertTrue(ontology.containsAxiom(axiom), "Unexpected axiom after RDF round trip: " + axiom);
 				collected.add(axiom);
 			}
 		}

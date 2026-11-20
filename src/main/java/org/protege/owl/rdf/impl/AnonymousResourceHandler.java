@@ -1,25 +1,24 @@
 package org.protege.owl.rdf.impl;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
-import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAnnotationSubject;
 import org.semanticweb.owlapi.model.OWLAnnotationValue;
 import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import org.semanticweb.owlapi.model.OWLIndividual;
 import org.semanticweb.owlapi.model.OWLObject;
 import org.semanticweb.owlapi.model.OWLOntologyID;
-import org.semanticweb.owlapi.util.OWLObjectDuplicator;
-
-import javax.annotation.Nonnull;
+import org.semanticweb.owlapi.change.AddAxiomData;
+import org.semanticweb.owlapi.util.OWLObjectTransformer;
 
 public class AnonymousResourceHandler {
     public static final String ANONYMOUS_SURROGATE_PREFIX = "urn:AnonId:";
@@ -73,11 +72,21 @@ public class AnonymousResourceHandler {
     }
 
     public OWLAxiom removeSurrogates(OWLAxiom axiom) {
-        return new SurrogateRemover(factory).duplicateObject(axiom);
+        if (axiom instanceof OWLAnnotationAssertionAxiom) {
+            return (OWLAxiom) removeSurrogate(axiom);
+        }
+        return transform(transform(axiom, this::removeSurrogate, OWLIndividual.class),
+                this::removeSurrogate, OWLAnnotation.class);
     }
     
     public OWLAxiom insertSurrogates(OWLAxiom axiom) {
-        return new SurrogateInserter(factory).duplicateObject(axiom);
+        if (axiom instanceof OWLAnnotationAssertionAxiom) {
+            return (OWLAxiom) insertSurrogate(axiom);
+        }
+        // Annotation values must use surrogate IRIs, while individual positions
+        // use named individuals. Transform annotations before individuals.
+        return transform(transform(axiom, this::insertSurrogate, OWLAnnotation.class),
+                this::insertSurrogate, OWLIndividual.class);
     }
     
     public boolean isSurrogate(IRI iri) {
@@ -100,96 +109,79 @@ public class AnonymousResourceHandler {
         return IRI.create(ANONYMOUS_SURROGATE_PREFIX + idString);
     }
     
-    private Set<OWLAnnotation> duplicateAxiomAnnotations(OWLAxiom axiom, OWLObjectDuplicator duplicator) {
-        Set<OWLAnnotation> duplicatedAnnos = new HashSet<>();
-        for(OWLAnnotation anno : axiom.getAnnotations()) {
-            duplicatedAnnos.add(duplicator.duplicateObject(anno));
-        }
-        return duplicatedAnnos;
+    @SuppressWarnings("unchecked")
+    private OWLAxiom transform(OWLAxiom axiom, Function<OWLObject, OWLObject> mapper, Class<?> targetType) {
+        // OWLObjectTransformer also calls its function for OWLFacet values;
+        // retain those unchanged instead of casting them to the target type.
+        OWLObjectTransformer<Object> transformer = new OWLObjectTransformer<>(object -> true,
+                object -> object instanceof OWLObject ? mapper.apply((OWLObject) object) : object,
+                factory, (Class<Object>) targetType);
+        return transformer.change(axiom).stream()
+                .filter(AddAxiomData.class::isInstance)
+                .map(change -> ((AddAxiomData) change).getAxiom())
+                .findFirst().orElse(axiom);
     }
-    
-    private class SurrogateInserter extends OWLObjectDuplicator {
-        public SurrogateInserter(OWLDataFactory factory) {
-            super(factory);
-        }
-        
-        public void visit(OWLAnonymousIndividual i) {
-            IRI iri = getSurrogateId(i);
-            setLastObject(factory.getOWLNamedIndividual(iri));
-        }
-        
-        public void visit(@Nonnull OWLAnnotationAssertionAxiom axiom) {
-        	OWLObject rawSubject = duplicateObject(axiom.getSubject());
-            OWLAnnotationSubject subject;
-            if (rawSubject instanceof OWLNamedIndividual) {
-            	subject = ((OWLNamedIndividual) rawSubject).getIRI();
-            }
-            else {
-            	subject = (OWLAnnotationSubject) rawSubject;
-            }
-            OWLAnnotationProperty prop = duplicateObject(axiom.getProperty());
-            OWLObject rawValue = duplicateObject(axiom.getValue());
-            OWLAnnotationValue value;
-            if (rawValue instanceof OWLNamedIndividual) {
-                value = ((OWLNamedIndividual) rawValue).getIRI();
-            }
-            else {
-                value = (OWLAnnotationValue) rawValue;
-            }
-            setLastObject(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
-        }
-        
-        public void visit(@Nonnull OWLAnnotation node) {
-            OWLAnnotationProperty prop = duplicateObject(node.getProperty());
-            OWLObject rawValue = duplicateObject(node.getValue());
-            OWLAnnotationValue val;
-            if (rawValue instanceof OWLNamedIndividual) {
-                val = ((OWLNamedIndividual) rawValue).getIRI();
-            }
-            else {
-                val = (OWLAnnotationValue) rawValue;
-            }
-            setLastObject(factory.getOWLAnnotation(prop, val));
-        }
 
+    private OWLObject insertSurrogate(OWLObject object) {
+        if (object instanceof OWLAnonymousIndividual) {
+            return factory.getOWLNamedIndividual(getSurrogateId((OWLAnonymousIndividual) object));
+        }
+        if (object instanceof OWLAnnotationAssertionAxiom) {
+            OWLAnnotationAssertionAxiom axiom = (OWLAnnotationAssertionAxiom) object;
+            OWLAnnotationSubject subject = axiom.getSubject();
+            if (subject instanceof OWLAnonymousIndividual) {
+                subject = getSurrogateId((OWLAnonymousIndividual) subject);
+            }
+            return factory.getOWLAnnotationAssertionAxiom(axiom.getProperty(), subject,
+                    insertAnnotationValue(axiom.getValue()), axiom.annotations()
+                            .map(this::insertAnnotation).collect(Collectors.toSet()));
+        }
+        if (object instanceof OWLAnnotation) {
+            return insertAnnotation((OWLAnnotation) object);
+        }
+        return object;
     }
-    
-    private class SurrogateRemover extends OWLObjectDuplicator {
-        
-        public SurrogateRemover(OWLDataFactory factory) {
-            super(factory);
+
+    private OWLAnnotationValue insertAnnotationValue(OWLAnnotationValue value) {
+        return value instanceof OWLAnonymousIndividual
+                ? getSurrogateId((OWLAnonymousIndividual) value) : value;
+    }
+
+    private OWLAnnotation insertAnnotation(OWLAnnotation annotation) {
+        return factory.getOWLAnnotation(annotation.getProperty(),
+                insertAnnotationValue(annotation.getValue()), annotation.annotations()
+                        .map(this::insertAnnotation).collect(Collectors.toSet()));
+    }
+
+    private OWLObject removeSurrogate(OWLObject object) {
+        if (object instanceof OWLNamedIndividual) {
+            OWLNamedIndividual individual = (OWLNamedIndividual) object;
+            return isSurrogate(individual.getIRI()) ? getAnonymousIndividual(individual.getIRI()) : object;
         }
-        
-        public void visit(@Nonnull OWLNamedIndividual i) {
-            if (isSurrogate(i.getIRI())) {
-                setLastObject(getAnonymousIndividual(i.getIRI()));
-            }
-            else {
-                setLastObject(i);
-            }
-        }
-        
-        public void visit(@Nonnull OWLAnnotationAssertionAxiom axiom) {
-            OWLAnnotationSubject subject = duplicateObject(axiom.getSubject());
+        if (object instanceof OWLAnnotationAssertionAxiom) {
+            OWLAnnotationAssertionAxiom axiom = (OWLAnnotationAssertionAxiom) object;
+            OWLAnnotationSubject subject = axiom.getSubject();
             if (subject instanceof IRI && isSurrogate((IRI) subject)) {
-            	subject = getAnonymousIndividual((IRI) subject);
+                subject = getAnonymousIndividual((IRI) subject);
             }
-            OWLAnnotationProperty prop = duplicateObject(axiom.getProperty());
-            OWLAnnotationValue value = duplicateObject(axiom.getValue());
-            if (value instanceof IRI && isSurrogate((IRI) value)) {
-                value = getAnonymousIndividual((IRI) value);
-            }
-            setLastObject(factory.getOWLAnnotationAssertionAxiom(prop, subject, value, duplicateAxiomAnnotations(axiom, this)));
+            return factory.getOWLAnnotationAssertionAxiom(axiom.getProperty(), subject,
+                    removeAnnotationValue(axiom.getValue()), axiom.annotations()
+                            .map(this::removeAnnotation).collect(Collectors.toSet()));
         }
-        
-        public void visit(@Nonnull OWLAnnotation node) {
-            node.getProperty().accept(this);
-            OWLAnnotationProperty prop = duplicateObject(node.getProperty());
-            OWLAnnotationValue val = duplicateObject(node.getValue());
-            if (val instanceof IRI && isSurrogate((IRI) val)) {
-                val = getAnonymousIndividual((IRI) val);
-            }
-            setLastObject(factory.getOWLAnnotation(prop, val));
+        if (object instanceof OWLAnnotation) {
+            return removeAnnotation((OWLAnnotation) object);
         }
+        return object;
+    }
+
+    private OWLAnnotationValue removeAnnotationValue(OWLAnnotationValue value) {
+        return value instanceof IRI && isSurrogate((IRI) value)
+                ? getAnonymousIndividual((IRI) value) : value;
+    }
+
+    private OWLAnnotation removeAnnotation(OWLAnnotation annotation) {
+        return factory.getOWLAnnotation(annotation.getProperty(),
+                removeAnnotationValue(annotation.getValue()), annotation.annotations()
+                        .map(this::removeAnnotation).collect(Collectors.toSet()));
     }
 }

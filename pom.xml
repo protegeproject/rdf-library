@@ -2,19 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>org.sonatype.oss</groupId>
-		<artifactId>oss-parent</artifactId>
-		<version>7</version>
-	</parent>
-
 	<groupId>edu.stanford.protege</groupId>
 	<artifactId>rdf-library</artifactId>
-	<version>3.0.2-SNAPSHOT</version>
+	<version>4.0.0-SNAPSHOT</version>
 	<packaging>bundle</packaging>
 
 	<name>OWLAPI RDF Library</name>
 	<description>OWLAPI RDF Library</description>
+	<url>https://github.com/protegeproject/rdf-library</url>
 
 	<organization>
 		<name>Stanford Center for Biomedical Informatics Research</name>
@@ -43,12 +38,37 @@
 
 	<properties>
 		<sesame.version>2.7.16</sesame.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<logback.version>1.2.13</logback.version>
 		<slf4j.version>1.7.32</slf4j.version>
-		<owlapi.version>4.5.29</owlapi.version>
+		<owlapi.version>5.5.1</owlapi.version>
 	</properties>
 
 	<dependencies>
+		<!-- Sesame's datatype helpers use JAXB 2 converters removed from Java 11.
+		     Keep these APIs private to this plugin rather than adding JAXB to core. -->
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.1</version>
+			<exclusions>
+				<exclusion>
+					<groupId>javax.activation</groupId>
+					<artifactId>javax.activation-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.activation</groupId>
+			<artifactId>javax.activation</artifactId>
+			<version>1.2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.21.0</version>
+			<scope>provided</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.openrdf.sesame</groupId>
 			<artifactId>sesame-repository-sail</artifactId>
@@ -89,24 +109,28 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-core</artifactId>
 			<version>${logback.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		
 		<dependency>
 			<groupId>net.sourceforge.owlapi</groupId>
 			<artifactId>owlapi-osgidistribution</artifactId>
 			<version>${owlapi.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		
 		<dependency>
@@ -121,6 +145,26 @@
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.1</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>3.4.1</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<version>3.1.4</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>3.1.4</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
 				<configuration>
@@ -132,6 +176,12 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.3.1</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals><goal>jar-no-fork</goal></goals>
+					</execution>
+				</executions>
 			</plugin>
 
 			<plugin>
@@ -149,21 +199,6 @@
 			</plugin>
 
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-gpg-plugin</artifactId>
-				<version>3.2.4</version>
-				<executions>
-					<execution>
-						<id>sign-artifacts</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>sign</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-
-			<plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
 				<version>5.1.9</version>
@@ -172,17 +207,19 @@
 					<instructions>
 						<Bundle-SymbolicName>org.protege.owl.rdf;singleton:=true</Bundle-SymbolicName>
 						<Bundle-Vendor>The Protege Development Team</Bundle-Vendor>
-						<Embed-Dependency>sesame-queryparser-serql, sesame-queryparser-sparql</Embed-Dependency>
+						<Embed-Dependency>sesame-queryparser-serql, sesame-queryparser-sparql, jaxb-api, javax.activation</Embed-Dependency>
 						<Export-Package>
 							org.protege.owl.rdf*;version=${project.version},
 							info.aduna.*;version="2.7.0", 
-							org.openrdf.*;version="2.7.0",
-							org.slf4j.*,
-							ch.qos.logback.*,
-							com.fasterxml.jackson.core.*;version="2.5.1"
+							org.openrdf.*;version="2.7.0"
 						</Export-Package>
 						<Export-Service>org.openrdf.query.parser.QueryParserFactory</Export-Service>
 						<Import-Package>
+							!javax.xml.bind*,
+							!javax.activation*,
+							!com.sun.activation*,
+							org.glassfish.hk2.osgiresourcelocator;resolution:=optional,
+							org.apache.commons.io.*;version="[2.0,3.0)",
 							!org.apache.commons.httpclient.*, 
 							!groovy.lang, 
 							!javax.jms, 
@@ -209,34 +246,14 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.2.5</version>
+				<version>3.5.2</version>
 				<configuration>
-					<skip>true</skip>
+					<suiteXmlFiles>
+						<suiteXmlFile>src/test/resources/unit-tests.xml</suiteXmlFile>
+					</suiteXmlFiles>
 				</configuration>
-				<executions>
-					<execution>
-						<id>unit-tests</id>
-						<phase>test</phase>
-						<goals>
-							<goal>test</goal>
-						</goals>
-						<configuration>
-							<skip>false</skip>
-							<suiteXmlFiles>
-								<suiteXmlFile>src/test/resources/unit-tests.xml</suiteXmlFile>
-							</suiteXmlFiles>
-				        </configuration>
-					</execution>
-				</executions>
 			</plugin>
 			
-			<plugin>
-				<artifactId>maven-eclipse-plugin</artifactId>
-				<version>2.10</version>
-				<configuration>
-					<pde>true</pde>
-				</configuration>
-			</plugin>			
 		</plugins>
 	</build>
 </project>
