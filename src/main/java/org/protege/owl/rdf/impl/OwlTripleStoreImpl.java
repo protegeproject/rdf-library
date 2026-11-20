@@ -398,7 +398,7 @@ public class OwlTripleStoreImpl implements OwlTripleStore {
         org.openrdf.model.URI result = null;
         RepositoryConnection connection = repository.getConnection();
         try {
-            org.openrdf.model.URI rdfId = repository.getValueFactory().createURI(id.getOntologyIRI().toString());
+            org.openrdf.model.URI rdfId = repository.getValueFactory().createURI(id.getOntologyIRI().get().toString());
             org.openrdf.model.URI rdfVersion = id.getVersionIRI().isPresent() ? repository
                     .getValueFactory().createURI(
                             id.getVersionIRI().get().toString()) : null;
